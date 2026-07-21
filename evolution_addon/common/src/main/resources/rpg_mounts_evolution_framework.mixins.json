@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "refmap": "rpg_mounts_evolution_framework-refmap.json",
+  "package": "ddraig.net.rpgmounts.evolution.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "minVersion": "0.8",
+  "mixins": [
+    "LivingEntityMixin",
+    "MountCommandsMixin"
+  ],
+  "client": [],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

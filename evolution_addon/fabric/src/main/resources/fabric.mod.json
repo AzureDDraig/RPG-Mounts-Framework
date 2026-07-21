@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "rpg_mounts_evolution_framework",
+  "version": "${version}",
+  "name": "RPG Mounts Evolution Framework Addon",
+  "description": "Pluggable branching evolution trees and editor addon for RPG Mounts Framework.",
+  "authors": [
+    "Ddraig__"
+  ],
+  "contact": {},
+  "license": "ARR",
+  "icon": "icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "ddraig.net.rpgmounts.evolution.fabric.RPGMountsEvolutionFabric"
+    ],
+    "client": [
+      "ddraig.net.rpgmounts.evolution.fabric.RPGMountsEvolutionFabricClient"
+    ]
+  },
+  "mixins": [
+    "rpg_mounts_evolution_framework.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~1.20.1",
+    "rpg_mounts": "*"
+  }
+}

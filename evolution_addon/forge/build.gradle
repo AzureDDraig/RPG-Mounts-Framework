@@ -1,0 +1,75 @@
+plugins {
+    id "com.gradleup.shadow"
+}
+architectury {
+    platformSetupLoomIde()
+    forge()
+}
+loom {
+    forge {
+        mixinConfig "rpg_mounts_evolution_framework.mixins.json"
+    }
+}
+configurations {
+    common
+    shadowCommon
+    compileClasspath.extendsFrom common
+    runtimeClasspath.extendsFrom common
+    developmentForge.extendsFrom common
+}
+dependencies {
+    forge "net.minecraftforge:forge:${rootProject.forge_version}"
+    modApi "dev.architectury:architectury-forge:${rootProject.architectury_api_version}"
+
+    compileOnly project(":forge")
+    compileOnly project(":common")
+
+    common(project(path: ":evolution_addon_common", configuration: "namedElements")) { transitive false }
+    shadowCommon(project(path: ":evolution_addon_common", configuration: "transformProductionForge")) { transitive = false }
+}
+processResources {
+    inputs.property "version", project.version
+    filesMatching("META-INF/mods.toml") {
+        expand "version": project.version
+    }
+}
+shadowJar {
+    exclude "fabric.mod.json"
+    exclude "architectury.common.json"
+    exclude "META-INF/versions/**"
+    configurations = [project.configurations.shadowCommon]
+    archiveClassifier = "dev-shadow"
+}
+remapJar {
+    input.set shadowJar.archiveFile
+    dependsOn shadowJar
+    archiveBaseName = "RPG-Mounts-Framework-evolution_addon-forge-${rootProject.minecraft_version}"
+    archiveVersion = project.version
+    archiveClassifier = ""
+}
+sourcesJar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    def commonSources = project(":evolution_addon_common").sourcesJar
+    dependsOn commonSources
+    from commonSources.archiveFile.map { zipTree(it) }
+}
+tasks.register("deployToDev", Copy) {
+    dependsOn remapJar
+    from remapJar.archiveFile
+    into "C:/Users/Ddraig__/curseforge/minecraft/Instances/dev-forge-1201/mods"
+    
+    doFirst {
+        def targetDir = file("C:/Users/Ddraig__/curseforge/minecraft/Instances/dev-forge-1201/mods")
+        if (targetDir.exists()) {
+            targetDir.listFiles().each { file ->
+                if (file.name.startsWith("RPG-Mounts-Framework-evolution_addon-forge-") && file.name.endsWith(".jar")) {
+                    println "Deleting old deploy jar: ${file.name}"
+                    file.delete()
+                }
+            }
+        }
+    }
+}
+tasks.named("build").configure {
+    finalizedBy("deployToDev")
+}

@@ -1,0 +1,18 @@
+architectury {
+    common(rootProject.enabled_platforms.split(","))
+}
+loom {
+    mixin {
+        defaultRefmapName = "rpg_mounts_evolution_framework-refmap.json"
+    }
+}
+repositories {
+    maven { url 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/' }
+}
+
+dependencies {
+    compileOnly project(":common")
+    modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+    modApi "dev.architectury:architectury:${rootProject.architectury_api_version}"
+    compileOnly "software.bernie.geckolib:geckolib-fabric-1.20.1:${rootProject.geckolib_version}"
+}

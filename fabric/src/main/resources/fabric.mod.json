@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "rpg_mounts",
+  "version": "${version}",
+  "name": "RPG Mounts Framework",
+  "description": "A comprehensive framework for rideable RPG mounts with advanced features, bonding, stats, and integration.",
+  "authors": [
+    "Azureddraig"
+  ],
+  "contact": {
+    "homepage": "",
+    "sources": ""
+  },
+  "license": "CC0-1.0",
+  "icon": "assets/rpg_mounts/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "ddraig.net.rpgmounts.fabric.RPGMountsFabric"
+    ],
+    "client": [
+      "ddraig.net.rpgmounts.fabric.client.RPGMountsFabricClient"
+    ]
+  },
+  "mixins": [
+    "rpg_mounts.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": "~1.20.1",
+    "java": ">=17",
+    "architectury": ">=9.2.14",
+    "fabric": "*"
+  },
+  "suggests": {
+    "another-mod": "*"
+  },
+  "change_log": [
+    "2026-06-18: Initial template package restructuring to rpg_mounts",
+    "2026-06-19: Changed mod name to RPG Mounts Framework"
+  ]
+}

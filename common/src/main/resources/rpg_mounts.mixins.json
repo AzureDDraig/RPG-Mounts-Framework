@@ -1,0 +1,32 @@
+{
+  "required": true,
+  "package": "ddraig.net.rpgmounts.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "minVersion": "0.8",
+  "client": [
+    "MountedPlayerCameraMixin",
+    "WalkAnimationStateAccessor",
+    "LocalPlayerMixin",
+    "MinecraftMixin",
+    "KeyboardHandlerMixin",
+    "LivingEntityRendererMixin",
+    "PackRepositoryMixin",
+    "GeoEntityRendererMixin"
+  ],
+  "mixins": [
+    "MountedPlayerReachMixin",
+    "SmartDismountMixin",
+    "LivingEntityVisibilityMixin",
+    "LlamaSpitMixin",
+    "LivingEntityHurtMixin",
+    "EnchantmentHelperMixin",
+    "EntitySpeedFactorMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "change_log": [
+    "2026-06-18: Initial mixin config setup for reach, camera, and smart dismount mixins.",
+    "2026-06-19: Added WalkAnimationStateAccessor mixin registration."
+  ]
+}

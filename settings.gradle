@@ -1,0 +1,26 @@
+pluginManagement {
+    repositories {
+        maven { url = 'https://maven.fabricmc.net/' }
+        maven { url = 'https://maven.architectury.dev/' }
+        maven { url = 'https://files.minecraftforge.net/maven/' }
+        gradlePluginPortal()
+    }
+}
+
+// Change Log:
+// - 2026-06-19: Changed rootProject.name from 'basemod' to 'RPG-Mounts-Framework'
+
+rootProject.name = 'RPG-Mounts-Framework'
+
+include 'common'
+include 'fabric'
+include 'forge'
+
+include 'evolution_addon_common'
+include 'evolution_addon_fabric'
+include 'evolution_addon_forge'
+
+project(':evolution_addon_common').projectDir = file('evolution_addon/common')
+project(':evolution_addon_fabric').projectDir = file('evolution_addon/fabric')
+project(':evolution_addon_forge').projectDir = file('evolution_addon/forge')
+

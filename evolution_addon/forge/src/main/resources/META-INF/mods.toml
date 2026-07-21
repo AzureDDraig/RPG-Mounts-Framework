@@ -1,0 +1,31 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="ARR"
+
+[[mods]]
+modId="rpg_mounts_evolution_framework"
+version="${version}"
+displayName="RPG Mounts Evolution Framework Addon"
+authors="Ddraig__"
+description="Pluggable branching evolution trees and editor addon for RPG Mounts Framework."
+
+[[dependencies.rpg_mounts_evolution_framework]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.rpg_mounts_evolution_framework]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.20.2)"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.rpg_mounts_evolution_framework]]
+modId="rpg_mounts"
+mandatory=true
+versionRange="*"
+ordering="NONE"
+side="BOTH"

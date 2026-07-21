@@ -1,0 +1,39 @@
+# Change Log:
+# - 2026-06-18: Initial template package restructuring to rpg_mounts
+# - 2026-06-19: Changed mod name to RPG Mounts Framework
+
+modLoader = "javafml"
+loaderVersion = "[47,)"
+#issueTrackerURL = ""
+license = "MIT"
+
+[[mods]]
+modId = "rpg_mounts"
+version = "${version}"
+displayName = "RPG Mounts Framework"
+authors = "Azureddraig"
+description = '''
+A comprehensive framework for rideable RPG mounts with advanced features, bonding, stats, and integration.
+'''
+logoFile = "icon.png"
+
+[[dependencies.rpg_mounts]]
+modId = "forge"
+mandatory = true
+versionRange = "[47,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.rpg_mounts]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[1.20.1,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.rpg_mounts]]
+modId = "architectury"
+mandatory = true
+versionRange = "[9.2.14,)"
+ordering = "AFTER"
+side = "BOTH"
