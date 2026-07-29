@@ -4,6 +4,18 @@ This document tracks all builds and changes implemented.
 
 ---
 
+### [Build 127 - 26-209-11-25] (Compilation Successful)
+- **GitHub Issue #12 Fixes & Feature Additions**:
+  - **Mount Creator UI Mount List Scrollbar & Mouse Wheel Scrolling (`MountCreatorScreen.java`)**: Added vertical scrollbar, scissor clipping box (`RenderSystem.enableScissor`), and mouse wheel scrolling to the sidebar template list.
+  - **Animation Tab Walk & Run Field Saving (`MountCreatorScreen.java`)**: Fixed saving and network synchronization of `walk` and `run` animation mappings in `saveTextFieldsToActiveTemplate()` regardless of model string casing.
+  - **Custom Hurt Sound Resolution & Playback (`RPGMountEntity.java`)**: Refactored `getSoundEvent` and `playMountSound` with `rpg_mounts:` namespace prefix fallback and safe `ResourceLocation.tryParse(...)` validation for custom hurt sound files.
+  - **Alphabetical Mount List Sorting**: Mount lists across Creator UI sidebar and Mount Manager HUD tabs (Ground, Aquatic, Flying) are now sorted alphabetically (`a.compareToIgnoreCase(b)`).
+  - **HUD Ancestry Tab Overflow Fix (`MountHUDScreen.java`)**: Dynamically calculated right-hand tab bounds (`maxAncRight`) and added text truncation (`plainSubstrByWidth`) to prevent the Ancestry tab label from overflowing past the HUD frame.
+  - **Favorite Mount Hotkey & Star Toggle (`RPGMountsClient.java`, `MountHUDScreen.java`)**: Registered `favoriteKey` key mapping. Added `★ [Fav]` star toggle in `MountHUDScreen.java` next to mount titles to set favorite mounts, and pressing the hotkey summons the favorite mount instantly.
+  - **Default Mount Preview Camera Settings (`MountData.java`, `MountHUDScreen.java`)**: Added `previewZoom` and `previewOffsetY` to `MountData` and 3D preview viewport calculation so models open pre-zoomed and centered according to template defaults.
+
+---
+
 ### [Build 126 - 26-206-21-54] (Compilation Successful)
 - **Epic Fight / Resource Reload Crash Fix (`DynamicMountPackResources.java`)**:
   - Resolved client crash during game loading / overlay render (`ForgeLoadingOverlay`) caused when Epic Fight or Minecraft reloads sound and pack resources.
