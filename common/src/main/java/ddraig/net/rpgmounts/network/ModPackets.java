@@ -51,9 +51,11 @@ public class ModPackets {
     public static final ResourceLocation S2C_OPEN_BESTIARY = new ResourceLocation(RPGMounts.MOD_ID, "open_bestiary");
     public static final ResourceLocation S2C_SYNC_ABILITIES = new ResourceLocation(RPGMounts.MOD_ID, "sync_abilities");
     public static final ResourceLocation S2C_SYNC_BESTIARY = new ResourceLocation(RPGMounts.MOD_ID, "sync_bestiary");
+    public static final ResourceLocation S2C_PLAY_SOUND = new ResourceLocation(RPGMounts.MOD_ID, "play_sound");
 
     public static final ResourceLocation C2S_SAVE_TEMPLATE = new ResourceLocation(RPGMounts.MOD_ID, "save_template");
     public static final ResourceLocation C2S_DELETE_TEMPLATE = new ResourceLocation(RPGMounts.MOD_ID, "delete_template");
+    public static final ResourceLocation C2S_SAVE_ANIMATION_MAPPINGS = new ResourceLocation(RPGMounts.MOD_ID, "save_animation_mappings");
 
     public static final ResourceLocation C2S_GEAR_CLICK = new ResourceLocation(RPGMounts.MOD_ID, "gear_click");
     public static final ResourceLocation S2C_SYNC_GEAR = new ResourceLocation(RPGMounts.MOD_ID, "sync_gear");
@@ -341,6 +343,28 @@ public class ModPackets {
                                 }
                             }
                         }
+                    }
+                }
+            });
+        });
+
+        NetworkManager.registerReceiver(NetworkManager.c2s(), C2S_SAVE_ANIMATION_MAPPINGS, (buf, context) -> {
+            String templateId = buf.readUtf();
+            String json = buf.readUtf();
+            ServerPlayer player = (ServerPlayer) context.getPlayer();
+            context.queue(() -> {
+                if (player.hasPermissions(2)) {
+                    try {
+                        ddraig.net.rpgmounts.config.AnimationMappingConfig.AnimationNames mapping = 
+                            new com.google.gson.Gson().fromJson(json, ddraig.net.rpgmounts.config.AnimationMappingConfig.AnimationNames.class);
+                        if (mapping != null && templateId != null && !templateId.isEmpty()) {
+                            ddraig.net.rpgmounts.config.AnimationMappingConfig.get().mappings.put(templateId, mapping);
+                            ddraig.net.rpgmounts.config.AnimationMappingConfig.save();
+                            syncConfigToAll(player.server);
+                            player.sendSystemMessage(Component.literal("§aSaved animation mappings for mount '" + templateId + "'."));
+                        }
+                    } catch (Exception e) {
+                        RPGMounts.LOGGER.error("Failed to save animation mappings for " + templateId, e);
                     }
                 }
             });
@@ -875,6 +899,21 @@ public class ModPackets {
                     }
                 }
             }
+        }
+    }
+
+    public static void sendPlaySoundPacketToTrackers(Entity entity, String soundName, float volume, float pitch) {
+        if (entity.level().isClientSide) return;
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        buf.writeUtf(soundName);
+        buf.writeDouble(entity.getX());
+        buf.writeDouble(entity.getY());
+        buf.writeDouble(entity.getZ());
+        buf.writeFloat(volume);
+        buf.writeFloat(pitch);
+        
+        if (entity.level() instanceof ServerLevel serverLevel) {
+            serverLevel.getChunkSource().broadcast(entity, NetworkManager.toPacket(NetworkManager.s2c(), S2C_PLAY_SOUND, buf));
         }
     }
 }

@@ -31,6 +31,8 @@ public class MountData {
     public String texturePath = "";
     public String animationPath = "";
     public float scale = 1.0f;
+    public float previewZoom = 1.0f;
+    public float previewOffsetY = 0.0f;
     public int enhancerSlots = 4;
     public int staminaIconType = 0; // 0 to 4
     public String flightParticle = "minecraft:cloud";

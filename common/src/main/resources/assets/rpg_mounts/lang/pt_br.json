@@ -23,6 +23,7 @@
   "gui.rpg_mounts.creator.title": "Criador de Montarias RPG UI",
   "gui.rpg_mounts.creator.tab.general": "Geral",
   "gui.rpg_mounts.creator.tab.model": "Modelo e Anims",
+  "gui.rpg_mounts.creator.tab.animations": "Animações",
   "gui.rpg_mounts.creator.tab.stats": "Status",
   "gui.rpg_mounts.creator.tab.combat": "Combate",
   "gui.rpg_mounts.creator.tab.sounds": "Sons e FX",

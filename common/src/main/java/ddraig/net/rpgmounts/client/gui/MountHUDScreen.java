@@ -157,6 +157,17 @@ public class MountHUDScreen extends Screen {
             }
         }
 
+        java.util.Comparator<RPGMountsClient.UnlockedMountInfo> comp = (a, b) -> {
+            MountData mA = MountRegistry.getTemplate(a.mountId);
+            MountData mB = MountRegistry.getTemplate(b.mountId);
+            String nameA = (a.customName != null && !a.customName.isEmpty()) ? a.customName : (mA != null && mA.name != null && !mA.name.isEmpty() ? mA.name : a.mountId);
+            String nameB = (b.customName != null && !b.customName.isEmpty()) ? b.customName : (mB != null && mB.name != null && !mB.name.isEmpty() ? mB.name : b.mountId);
+            return nameA.compareToIgnoreCase(nameB);
+        };
+        groundMounts.sort(comp);
+        aquaticMounts.sort(comp);
+        flyingMounts.sort(comp);
+
         if (selectedInstance == null) {
             if (!groundMounts.isEmpty()) selectedInstance = groundMounts.get(0);
             else if (!aquaticMounts.isEmpty()) selectedInstance = aquaticMounts.get(0);
@@ -405,8 +416,10 @@ public class MountHUDScreen extends Screen {
                 if (baseScale < 0.2F) {
                     baseScale = 0.2F;
                 }
-                int scaleFactor = (int) (baseScale * previewZoom);
-                int centeredY = (viewY + viewHeight / 2) + (int) ((dummy.getBbHeight() * scaleFactor) / 2);
+                float defZoom = (selectedMount != null && selectedMount.previewZoom > 0.05f) ? selectedMount.previewZoom : 1.0f;
+                int scaleFactor = (int) (baseScale * previewZoom * defZoom);
+                float defOffsetY = selectedMount != null ? selectedMount.previewOffsetY : 0.0f;
+                int centeredY = (viewY + viewHeight / 2) + (int) ((dummy.getBbHeight() * scaleFactor) / 2) + (int) (defOffsetY * scaleFactor);
                 
                 int viewScissorX = (int) (viewX * scaleVal);
                 int viewScissorY = (int) ((this.minecraft.getWindow().getGuiScaledHeight() - (viewY + viewHeight - 1)) * scaleVal);
@@ -451,16 +464,22 @@ public class MountHUDScreen extends Screen {
             }
 
             if (activeEntity != null) {
-                maxHp = activeEntity.getMaxHealth();
+            maxHp = activeEntity.getMaxHealth();
                 speedVal = activeEntity.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.MOVEMENT_SPEED);
                 bondingVal = activeEntity.getBonding();
             }
 
-            // Draw Name & Rarity below viewport in Middle Column
+            // Draw Name & Rarity & Favorite Star below viewport in Middle Column
             String displayName = (selectedInstance.customName != null && !selectedInstance.customName.isEmpty()) ? selectedInstance.customName : selectedMount.name;
             int nameColor = UIHelper.getCategoryColor(selectedMount.category);
             int nameY = viewY + viewHeight + 6;
             graphics.drawString(this.font, displayName, viewX + 4, nameY, nameColor, false);
+
+            boolean isFav = selectedInstance.instanceId.equals(ddraig.net.rpgmounts.client.RPGMountsClient.favoriteInstanceId);
+            String starSymbol = isFav ? "★ [Fav]" : "☆ [Fav]";
+            int starColor = isFav ? 0xFFFFD700 : 0xFF888888;
+            int starX = viewX + viewWidth - this.font.width(starSymbol) - 2;
+            graphics.drawString(this.font, starSymbol, starX, nameY, starColor, false);
             
             boolean showRarity = ModConfig.get().general.enableRarity;
             int rarityY = nameY + 11;
@@ -486,19 +505,14 @@ public class MountHUDScreen extends Screen {
             int descScissorH = (int) (descMaxH * scaleVal);
 
             com.mojang.blaze3d.systems.RenderSystem.enableScissor(descScissorX, descScissorY, descScissorW, descScissorH);
-            List<net.minecraft.util.FormattedCharSequence> descLines = this.font.split(descComp, viewWidth - 8);
-            int lineY = descY;
-            for (net.minecraft.util.FormattedCharSequence line : descLines) {
-                graphics.drawString(this.font, line, viewX + 4, lineY, 0xFFCCCCCC, false);
-                lineY += 10;
-            }
+            graphics.drawWordWrap(this.font, descComp, viewX + 4, descY, viewWidth - 8, 0xFFFFFFFF);
             com.mojang.blaze3d.systems.RenderSystem.disableScissor();
-
-            // Render Stats panel on the right side
-            UIHelper.drawRecessedSlot(graphics, statsX, statsY, statsW, statsH, panelBorder, slotBg);
 
             double currentHp = activeEntity != null ? activeEntity.getHealth() : maxHp;
             double currentStamina = activeEntity != null ? activeEntity.getStamina() : staminaVal;
+
+            // Render Stats panel on the right side
+            UIHelper.drawRecessedSlot(graphics, statsX, statsY, statsW, statsH, panelBorder, slotBg);
 
             int statsTabX = statsX + 8;
             int statsTabY = statsY + 6;
@@ -516,14 +530,16 @@ public class MountHUDScreen extends Screen {
 
             int ancTabX = statsTabX + statsTabW + 4;
             int ancTabY = statsY + 6;
-            int ancTabW = this.font.width(ancestryText) + 12;
+            int maxAncRight = statsX + statsW - 60;
+            int ancTabW = Math.max(20, Math.min(this.font.width(ancestryText) + 12, maxAncRight - ancTabX));
             int ancTabH = 10;
             boolean ancActive = activeTab.equals("ANCESTRY");
             int ancBorder = ancActive ? textActiveColor : 0xFF666666;
             int ancBg = ancActive ? 0xFF333333 : 0x40000000;
             graphics.fill(ancTabX, ancTabY, ancTabX + ancTabW, ancTabY + ancTabH, ancBg);
             UIHelper.drawOutline(graphics, ancTabX, ancTabY, ancTabW, ancTabH, ancBorder);
-            graphics.drawString(this.font, ancestryText, ancTabX + 6, ancTabY + 1, ancActive ? 0xFFFFFFFF : 0xFF888888, false);
+            String displayAncestry = this.font.plainSubstrByWidth(ancestryText, Math.max(10, ancTabW - 8));
+            graphics.drawString(this.font, displayAncestry, ancTabX + 4, ancTabY + 1, ancActive ? 0xFFFFFFFF : 0xFF888888, false);
 
             // Determine if evolution exists
             boolean hasUnlockedPath = false;
@@ -847,6 +863,20 @@ public class MountHUDScreen extends Screen {
             int statsY = y + 8;
             int statsH = height - 16;
 
+            int nameY = viewY + viewHeight + 6;
+            String starSymbol = "★ [Fav]";
+            int starW = this.font.width(starSymbol) + 4;
+            int starX = viewX + viewWidth - starW - 2;
+            if (mouseX >= starX && mouseX <= starX + starW && mouseY >= nameY && mouseY <= nameY + 12) {
+                if (selectedInstance.instanceId.equals(ddraig.net.rpgmounts.client.RPGMountsClient.favoriteInstanceId)) {
+                    ddraig.net.rpgmounts.client.RPGMountsClient.favoriteInstanceId = "";
+                } else {
+                    ddraig.net.rpgmounts.client.RPGMountsClient.favoriteInstanceId = selectedInstance.instanceId;
+                }
+                Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, 1.0F));
+                return true;
+            }
+
             String statsText = Component.translatable("gui.rpg_mounts.creator.tab.stats").getString();
             String ancestryText = Component.translatable("gui.rpg_mounts.hud.ancestry").getString();
             
@@ -862,7 +892,8 @@ public class MountHUDScreen extends Screen {
 
             int ancTabX = statsTabX + statsTabW + 4;
             int ancTabY = statsY + 6;
-            int ancTabW = this.font.width(ancestryText) + 12;
+            int maxAncRight = statsX + statsW - 60;
+            int ancTabW = Math.max(20, Math.min(this.font.width(ancestryText) + 12, maxAncRight - ancTabX));
             int ancTabH = 10;
             if (mouseX >= ancTabX && mouseX <= ancTabX + ancTabW && mouseY >= ancTabY && mouseY <= ancTabY + ancTabH) {
                 activeTab = "ANCESTRY";

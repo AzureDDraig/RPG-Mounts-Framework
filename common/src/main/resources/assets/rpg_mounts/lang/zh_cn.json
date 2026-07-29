@@ -22,6 +22,7 @@
   "gui.rpg_mounts.creator.title": "RPG坐骑创建器界面",
   "gui.rpg_mounts.creator.tab.general": "常规",
   "gui.rpg_mounts.creator.tab.model": "模型与动画",
+  "gui.rpg_mounts.creator.tab.animations": "动画触发",
   "gui.rpg_mounts.creator.tab.stats": "属性",
   "gui.rpg_mounts.creator.tab.combat": "战斗",
   "gui.rpg_mounts.creator.tab.sounds": "声音与特效",

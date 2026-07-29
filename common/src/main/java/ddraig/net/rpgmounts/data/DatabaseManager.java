@@ -429,6 +429,7 @@ public class DatabaseManager {
     public static java.util.concurrent.CompletableFuture<Void> removeUnlockedMountAsync(UUID playerUuid, String instanceId) {
         Map<String, UnlockedMountData> owned = unlockedMountsCache.get(playerUuid);
         if (owned != null) owned.remove(instanceId);
+        deleteMountGearAsync(playerUuid, instanceId);
         if (!isInitialized()) {
             return java.util.concurrent.CompletableFuture.completedFuture(null);
         }
@@ -442,6 +443,75 @@ public class DatabaseManager {
                 throw new java.util.concurrent.CompletionException(e);
             }
         }, dbExecutor);
+    }
+
+    public static java.util.concurrent.CompletableFuture<java.util.List<String>> removeMatchingUnlockedMountsAsync(UUID playerUuid, String targetQuery) {
+        java.util.List<String> removedInstanceIds = new java.util.ArrayList<>();
+        if (targetQuery == null || targetQuery.trim().isEmpty()) {
+            return java.util.concurrent.CompletableFuture.completedFuture(removedInstanceIds);
+        }
+
+        String raw = targetQuery.trim();
+        String extracted = extractUuidFromQuery(raw);
+        String queryClean = (extracted != null ? extracted : raw).toLowerCase();
+
+        Map<String, UnlockedMountData> owned = unlockedMountsCache.get(playerUuid);
+        if (owned != null) {
+            java.util.List<String> toRemove = new java.util.ArrayList<>();
+            for (Map.Entry<String, UnlockedMountData> entry : owned.entrySet()) {
+                String instId = entry.getKey();
+                UnlockedMountData data = entry.getValue();
+                MountData template = MountRegistry.getTemplate(data.mountId);
+                String templateName = template != null && template.name != null ? template.name : data.mountId;
+
+                if (instId.toLowerCase().equals(queryClean) ||
+                    data.mountId.toLowerCase().equals(queryClean) ||
+                    (data.customName != null && data.customName.toLowerCase().equals(queryClean)) ||
+                    templateName.toLowerCase().equals(queryClean) ||
+                    raw.toLowerCase().contains(instId.toLowerCase())) {
+                    toRemove.add(instId);
+                }
+            }
+            for (String instId : toRemove) {
+                owned.remove(instId);
+                if (!removedInstanceIds.contains(instId)) {
+                    removedInstanceIds.add(instId);
+                }
+                deleteMountGearAsync(playerUuid, instId);
+            }
+        }
+
+        if (!isInitialized()) {
+            return java.util.concurrent.CompletableFuture.completedFuture(removedInstanceIds);
+        }
+
+        return java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+            try {
+                String sql = "DELETE FROM unlocked_mounts WHERE player_uuid = ? AND (LOWER(instance_id) = ? OR LOWER(mount_id) = ? OR LOWER(custom_name) = ?)";
+                try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+                    stmt.setString(1, playerUuid.toString());
+                    stmt.setString(2, queryClean);
+                    stmt.setString(3, queryClean);
+                    stmt.setString(4, queryClean);
+                    stmt.executeUpdate();
+                }
+            } catch (SQLException e) {
+                RPGMounts.LOGGER.error("Failed to remove matching unlocked mounts asynchronously:", e);
+            }
+            return removedInstanceIds;
+        }, dbExecutor);
+    }
+
+    private static final java.util.regex.Pattern UUID_PATTERN = 
+        java.util.regex.Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+
+    private static String extractUuidFromQuery(String input) {
+        if (input == null) return null;
+        java.util.regex.Matcher matcher = UUID_PATTERN.matcher(input);
+        if (matcher.find()) {
+            return matcher.group();
+        }
+        return null;
     }
 
     public static void executeWithCallback(java.util.concurrent.CompletableFuture<Void> future, java.util.concurrent.Executor mainThreadExecutor, Runnable onSuccess, java.util.function.Consumer<Throwable> onFailure) {

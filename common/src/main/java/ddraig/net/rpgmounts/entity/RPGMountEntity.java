@@ -198,9 +198,9 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
 
     @Override
     protected void registerGoals() {
-        this.goalSelector.addGoal(1, new net.minecraft.world.entity.ai.goal.FloatGoal(this));
+        this.goalSelector.addGoal(1, new MountFloatGoal(this));
         this.goalSelector.addGoal(2, new MountMeleeAttackGoal(this));
-        this.goalSelector.addGoal(3, new net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal(this, 1.0D));
+        this.goalSelector.addGoal(3, new MountStrollGoal(this, 1.0D));
         this.goalSelector.addGoal(4, new net.minecraft.world.entity.ai.goal.LookAtPlayerGoal(this, net.minecraft.world.entity.player.Player.class, 6.0F));
         this.goalSelector.addGoal(5, new net.minecraft.world.entity.ai.goal.RandomLookAroundGoal(this));
         
@@ -803,11 +803,14 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
                 if (ability1Cooldown > 0) ability1Cooldown--;
                 if (ability2Cooldown > 0) ability2Cooldown--;
 
-                // Aquatic breathing check
-                if (data.category.equalsIgnoreCase("AQUATIC") && this.isVehicle()) {
+                // Aquatic breathing check (throttled to every 10 ticks to avoid effect object allocation spam)
+                if (data.category.equalsIgnoreCase("AQUATIC") && this.isVehicle() && this.tickCount % 10 == 0) {
                     for (Entity rider : this.getPassengers()) {
                         if (rider instanceof LivingEntity living) {
-                            living.addEffect(new MobEffectInstance(MobEffects.WATER_BREATHING, 40, 0, false, false, true));
+                            MobEffectInstance active = living.getEffect(MobEffects.WATER_BREATHING);
+                            if (active == null || active.getDuration() < 30) {
+                                living.addEffect(new MobEffectInstance(MobEffects.WATER_BREATHING, 100, 0, false, false, true));
+                            }
                         }
                     }
                 }
@@ -871,14 +874,18 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
                                 rightX, this.getY() + 0.5 * scale, rightZ, 
                                 -this.getDeltaMovement().x * 0.2, 0.0, -this.getDeltaMovement().z * 0.2);
                         }
-                    } else if (data.category.equalsIgnoreCase("AQUATIC") && this.isInWater()) {
+                    } else if ((data.category.equalsIgnoreCase("AQUATIC") || data.category.equalsIgnoreCase("SURFACE_WATER")) && this.isInWater()) {
                         float scale = data.scale;
                         double yawRad = this.getYRot() * Mth.DEG_TO_RAD;
                         double backX = this.getX() - 1.2 * scale * Math.sin(yawRad);
                         double backZ = this.getZ() + 1.2 * scale * Math.cos(yawRad);
-                        this.level().addParticle(net.minecraft.core.particles.ParticleTypes.BUBBLE, 
-                            backX, this.getY() + 0.5 * scale, backZ, 
-                            -this.getDeltaMovement().x * 0.5, 0.0, -this.getDeltaMovement().z * 0.5);
+                        String pName = data.groundParticle;
+                        net.minecraft.core.particles.ParticleOptions part = getParticleOption(pName != null && !pName.isEmpty() ? pName : "minecraft:bubble");
+                        if (part != null) {
+                            this.level().addParticle(part, 
+                                backX, this.getY() + 0.5 * scale, backZ, 
+                                -this.getDeltaMovement().x * 0.5, 0.0, -this.getDeltaMovement().z * 0.5);
+                        }
                     }
                 }
             }
@@ -1895,14 +1902,9 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
                     } catch (Exception e) {}
                 }
                 if (!ability.sound.isEmpty()) {
-                    try {
-                        net.minecraft.sounds.SoundEvent snd = getSoundEvent(ability.sound);
-                        if (snd != null) {
-                            this.level().playSound(null, this.blockPosition(), snd, net.minecraft.sounds.SoundSource.NEUTRAL, 1.0f, 1.0f);
-                        }
-                    } catch (Exception e) {}
+                    this.playMountSound(ability.sound, 1.0f, 1.0f);
                 } else {
-                    this.level().playSound(null, this.blockPosition(), SoundEvents.ENDER_DRAGON_GROWL, SoundSource.NEUTRAL, 1.0f, 1.2f);
+                    this.playMountSound("minecraft:entity.ender_dragon.growl", 1.0f, 1.2f);
                 }
             }
 
@@ -1957,7 +1959,12 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
     private SoundEvent getSoundEvent(String soundName) {
         if (soundName == null || soundName.isEmpty()) return null;
         try {
-            ResourceLocation resLoc = new ResourceLocation(soundName);
+            String sName = soundName.toLowerCase(java.util.Locale.ROOT);
+            if (!sName.contains(":")) {
+                sName = "rpg_mounts:" + sName;
+            }
+            ResourceLocation resLoc = ResourceLocation.tryParse(sName);
+            if (resLoc == null) return null;
             return net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.getOptional(resLoc)
                     .orElseGet(() -> SoundEvent.createVariableRangeEvent(resLoc));
         } catch (Exception e) {
@@ -1966,6 +1973,56 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
         }
     }
 
+    public void playMountSound(String soundName, float volume, float pitch) {
+        if (soundName == null || soundName.isEmpty()) return;
+        if (this.level().isClientSide) {
+            try {
+                String sName = soundName.toLowerCase(java.util.Locale.ROOT);
+                if (!sName.contains(":")) {
+                    sName = "rpg_mounts:" + sName;
+                }
+                ResourceLocation resLoc = ResourceLocation.tryParse(sName);
+                if (resLoc != null) {
+                    SoundEvent snd = net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.getOptional(resLoc)
+                            .orElseGet(() -> SoundEvent.createVariableRangeEvent(resLoc));
+                    if (snd != null) {
+                        this.level().playLocalSound(this.getX(), this.getY(), this.getZ(), snd, net.minecraft.sounds.SoundSource.NEUTRAL, volume, pitch, false);
+                    }
+                }
+            } catch (Exception e) {}
+        } else {
+            ddraig.net.rpgmounts.network.ModPackets.sendPlaySoundPacketToTrackers(this, soundName, volume, pitch);
+        }
+    }
+
+    @Override
+    public void playAmbientSound() {
+        String tId = this.getTemplateId();
+        if (tId != null && !tId.isEmpty()) {
+            MountData data = MountRegistry.getTemplate(tId);
+            if (data != null && data.sounds != null && data.sounds.ambient != null && !data.sounds.ambient.isEmpty()) {
+                playMountSound(data.sounds.ambient, this.getSoundVolume(), this.getVoicePitch());
+                return;
+            }
+        }
+        super.playAmbientSound();
+    }
+
+    @Override
+    protected void playHurtSound(DamageSource damageSource) {
+        String tId = this.getTemplateId();
+        if (tId != null && !tId.isEmpty()) {
+            MountData data = MountRegistry.getTemplate(tId);
+            if (data != null && data.sounds != null && data.sounds.hurt != null && !data.sounds.hurt.isEmpty()) {
+                playMountSound(data.sounds.hurt, this.getSoundVolume(), this.getVoicePitch());
+                return;
+            }
+        }
+        super.playHurtSound(damageSource);
+    }
+
+
+
     @org.jetbrains.annotations.Nullable
     @Override
     protected SoundEvent getAmbientSound() {
@@ -1973,12 +2030,7 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
         if (tId != null && !tId.isEmpty()) {
             MountData data = MountRegistry.getTemplate(tId);
             if (data != null && data.sounds != null && data.sounds.ambient != null && !data.sounds.ambient.isEmpty()) {
-                try {
-                    SoundEvent snd = getSoundEvent(data.sounds.ambient);
-                    if (snd != null) return snd;
-                } catch (Exception e) {
-                    RPGMounts.LOGGER.warn("[RPG_MOUNTS] Failed to parse custom ambient sound: " + data.sounds.ambient);
-                }
+                return null; // Handled in playAmbientSound
             }
         }
         return super.getAmbientSound();
@@ -1991,12 +2043,7 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
         if (tId != null && !tId.isEmpty()) {
             MountData data = MountRegistry.getTemplate(tId);
             if (data != null && data.sounds != null && data.sounds.hurt != null && !data.sounds.hurt.isEmpty()) {
-                try {
-                    SoundEvent snd = getSoundEvent(data.sounds.hurt);
-                    if (snd != null) return snd;
-                } catch (Exception e) {
-                    RPGMounts.LOGGER.warn("[RPG_MOUNTS] Failed to parse custom hurt sound: " + data.sounds.hurt);
-                }
+                return null; // Handled in playHurtSound
             }
         }
         return super.getHurtSound(damageSource);
@@ -2009,12 +2056,7 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
         if (tId != null && !tId.isEmpty()) {
             MountData data = MountRegistry.getTemplate(tId);
             if (data != null && data.sounds != null && data.sounds.death != null && !data.sounds.death.isEmpty()) {
-                try {
-                    SoundEvent snd = getSoundEvent(data.sounds.death);
-                    if (snd != null) return snd;
-                } catch (Exception e) {
-                    RPGMounts.LOGGER.warn("[RPG_MOUNTS] Failed to parse custom death sound: " + data.sounds.death);
-                }
+                return null; // Handled in playDeathSound
             }
         }
         return super.getDeathSound();
@@ -2030,13 +2072,10 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
             MountData data = MountRegistry.getTemplate(tId);
             if (data != null && data.sounds != null && data.sounds.step != null && !data.sounds.step.isEmpty()) {
                 try {
-                    SoundEvent snd = getSoundEvent(data.sounds.step);
-                    if (snd != null) {
-                        this.playSound(snd, 0.15F, 1.0F);
-                        int duration = getSoundDurationTicks(data.sounds.step);
-                        this.customStepSoundCooldown = duration;
-                        return;
-                    }
+                    playMountSound(data.sounds.step, 0.15F, 1.0F);
+                    int duration = getSoundDurationTicks(data.sounds.step);
+                    this.customStepSoundCooldown = duration;
+                    return;
                 } catch (Exception e) {
                     RPGMounts.LOGGER.warn("[RPG_MOUNTS] Failed to parse custom step sound: " + data.sounds.step);
                 }
@@ -2227,6 +2266,13 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
 
     @Override
     public void die(DamageSource source) {
+        String tId = this.getTemplateId();
+        if (tId != null && !tId.isEmpty()) {
+            MountData data = MountRegistry.getTemplate(tId);
+            if (data != null && data.sounds != null && data.sounds.death != null && !data.sounds.death.isEmpty()) {
+                playMountSound(data.sounds.death, this.getSoundVolume(), this.getVoicePitch());
+            }
+        }
         if (!this.level().isClientSide) {
             this.ejectPassengers();
             
@@ -2279,6 +2325,17 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
     public boolean canBreatheUnderwater() {
         MountData data = MountRegistry.getTemplate(getTemplateId());
         return (data != null && (data.category.equalsIgnoreCase("AQUATIC") || data.category.equalsIgnoreCase("SURFACE_WATER"))) || super.canBreatheUnderwater();
+    }
+
+
+
+    @Override
+    public boolean isPushedByFluid() {
+        MountData data = MountRegistry.getTemplate(getTemplateId());
+        if (data != null && data.category.equalsIgnoreCase("AQUATIC") && (this.isInWater() || this.isInLava())) {
+            return false;
+        }
+        return super.isPushedByFluid();
     }
 
     public void loadStatsFromDatabase() {
@@ -3019,6 +3076,44 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
             String ai = data.combat.combatAi;
             if (!"AGGRESSIVE".equalsIgnoreCase(ai)) return false;
             
+            return super.canUse();
+        }
+    }
+
+    public static class MountFloatGoal extends net.minecraft.world.entity.ai.goal.FloatGoal {
+        private final RPGMountEntity mount;
+
+        public MountFloatGoal(RPGMountEntity mount) {
+            super(mount);
+            this.mount = mount;
+        }
+
+        @Override
+        public boolean canUse() {
+            MountData data = MountRegistry.getTemplate(this.mount.getTemplateId());
+            if (data != null && data.category.equalsIgnoreCase("AQUATIC")) {
+                return false;
+            }
+            return super.canUse();
+        }
+    }
+
+    public static class MountStrollGoal extends net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal {
+        private final RPGMountEntity mount;
+
+        public MountStrollGoal(RPGMountEntity mount, double speedModifier) {
+            super(mount, speedModifier);
+            this.mount = mount;
+        }
+
+        @Override
+        public boolean canUse() {
+            MountData data = MountRegistry.getTemplate(this.mount.getTemplateId());
+            if (data != null && data.category.equalsIgnoreCase("AQUATIC")) {
+                if (this.mount.isInWater()) {
+                    return false;
+                }
+            }
             return super.canUse();
         }
     }

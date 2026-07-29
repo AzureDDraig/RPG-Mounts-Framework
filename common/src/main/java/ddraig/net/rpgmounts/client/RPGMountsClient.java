@@ -36,6 +36,9 @@ public class RPGMountsClient {
     public static KeyMapping ability1Key;
     public static KeyMapping ability2Key;
     public static KeyMapping whistleKey;
+    public static KeyMapping favoriteKey;
+
+    public static String favoriteInstanceId = "";
 
     private static boolean lastJumpState = false;
     private static boolean lastSneakState = false;
@@ -297,6 +300,31 @@ public class RPGMountsClient {
             });
         });
 
+        NetworkManager.registerReceiver(NetworkManager.s2c(), ModPackets.S2C_PLAY_SOUND, (buf, context) -> {
+            String soundName = buf.readUtf();
+            double x = buf.readDouble();
+            double y = buf.readDouble();
+            double z = buf.readDouble();
+            float volume = buf.readFloat();
+            float pitch = buf.readFloat();
+            
+            context.queue(() -> {
+                net.minecraft.client.multiplayer.ClientLevel level = net.minecraft.client.Minecraft.getInstance().level;
+                if (level != null) {
+                    try {
+                        net.minecraft.resources.ResourceLocation resLoc = new net.minecraft.resources.ResourceLocation(soundName);
+                        net.minecraft.sounds.SoundEvent snd = net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.getOptional(resLoc)
+                                .orElseGet(() -> net.minecraft.sounds.SoundEvent.createVariableRangeEvent(resLoc));
+                        if (snd != null) {
+                            level.playLocalSound(x, y, z, snd, net.minecraft.sounds.SoundSource.NEUTRAL, volume, pitch, false);
+                        }
+                    } catch (Exception e) {
+                        // Ignore
+                    }
+                }
+            });
+        });
+
         // Register Keybinds
         hudKey = new KeyMapping(
                 "key.rpgmounts.open_hud",
@@ -322,11 +350,18 @@ public class RPGMountsClient {
                 GLFW.GLFW_KEY_V,
                 "category.rpgmounts.general"
         );
+        favoriteKey = new KeyMapping(
+                "key.rpgmounts.summon_favorite",
+                InputConstants.Type.KEYSYM,
+                GLFW.GLFW_KEY_UNKNOWN,
+                "category.rpgmounts.general"
+        );
 
         KeyMappingRegistry.register(hudKey);
         KeyMappingRegistry.register(ability1Key);
         KeyMappingRegistry.register(ability2Key);
         KeyMappingRegistry.register(whistleKey);
+        KeyMappingRegistry.register(favoriteKey);
 
         // Register client tick listener for key inputs
         ClientTickEvent.CLIENT_POST.register(client -> {
@@ -334,6 +369,18 @@ public class RPGMountsClient {
 
             while (hudKey.consumeClick()) {
                 client.setScreen(new MountHUDScreen());
+            }
+
+            while (favoriteKey.consumeClick()) {
+                String favId = favoriteInstanceId;
+                if (favId.isEmpty() && !unlockedMounts.isEmpty()) {
+                    favId = unlockedMounts.keySet().iterator().next();
+                }
+                if (!favId.isEmpty()) {
+                    FriendlyByteBuf summonBuf = new FriendlyByteBuf(Unpooled.buffer());
+                    summonBuf.writeUtf(favId);
+                    NetworkManager.sendToServer(ModPackets.C2S_SUMMON, summonBuf);
+                }
             }
 
             if (client.player.getVehicle() instanceof RPGMountEntity mount) {

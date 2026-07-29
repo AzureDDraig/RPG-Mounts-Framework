@@ -22,6 +22,7 @@
   "gui.rpg_mounts.creator.title": "RPG Reittier-Ersteller UI",
   "gui.rpg_mounts.creator.tab.general": "Allgemein",
   "gui.rpg_mounts.creator.tab.model": "Modell & Anims",
+  "gui.rpg_mounts.creator.tab.animations": "Animationen",
   "gui.rpg_mounts.creator.tab.stats": "Werte",
   "gui.rpg_mounts.creator.tab.combat": "Kampf",
   "gui.rpg_mounts.creator.tab.sounds": "Sounds & FX",

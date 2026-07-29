@@ -12,10 +12,43 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Set;
 import ddraig.net.rpgmounts.data.MountRegistry;
 
 public class DynamicMountPackResources implements PackResources {
+
+    private static String sanitizePath(String path) {
+        if (path == null) return "";
+        return path.toLowerCase(Locale.ROOT)
+                .replace(' ', '_')
+                .replaceAll("[^a-z0-9_.-/]", "");
+    }
+
+    private File findFileCaseInsensitive(File parentDir, String relativePath) {
+        if (parentDir == null || !parentDir.exists() || !parentDir.isDirectory()) return null;
+        File exact = new File(parentDir, relativePath);
+        if (exact.exists()) return exact;
+        
+        String[] parts = relativePath.split("/");
+        File current = parentDir;
+        for (String part : parts) {
+            if (!current.exists() || !current.isDirectory()) return null;
+            File[] children = current.listFiles();
+            if (children == null) return null;
+            File match = null;
+            for (File child : children) {
+                if (child.getName().equalsIgnoreCase(part) || sanitizePath(child.getName()).equalsIgnoreCase(sanitizePath(part))) {
+                    match = child;
+                    break;
+                }
+            }
+            if (match == null) return null;
+            current = match;
+        }
+        return current.exists() ? current : null;
+    }
+
     @Nullable
     @Override
     public IoSupplier<InputStream> getRootResource(String... paths) {
@@ -50,22 +83,24 @@ public class DynamicMountPackResources implements PackResources {
                     if (slashIdx > 0) {
                         String modelId = unpackedPath.substring(0, slashIdx);
                         String relativeSoundPath = unpackedPath.substring(slashIdx + 1);
-                        File unpackedFolder = new File(MountRegistry.getMountsFolder(), modelId);
-                        File file = new File(unpackedFolder, relativeSoundPath);
-                        if (file.exists()) {
-                            return () -> new FileInputStream(file);
+                        File unpackedFolder = findFileCaseInsensitive(MountRegistry.getMountsFolder(), modelId);
+                        if (unpackedFolder != null) {
+                            File file = findFileCaseInsensitive(unpackedFolder, relativeSoundPath);
+                            if (file != null && file.exists()) {
+                                return () -> new FileInputStream(file);
+                            }
                         }
                     }
                 } else if (path.startsWith("sounds/custom/")) {
                     String customPath = path.substring(14); // e.g. "idle.ogg" or "subdir/idle.ogg"
-                    File file = new File(MountRegistry.getSoundsFolder(), customPath);
-                    if (file.exists()) {
+                    File file = findFileCaseInsensitive(MountRegistry.getSoundsFolder(), customPath);
+                    if (file != null && file.exists()) {
                         return () -> new FileInputStream(file);
                     }
                 } else {
                     String customPath = path.substring(7); // e.g. "idle.ogg"
-                    File file = new File(MountRegistry.getSoundsFolder(), customPath);
-                    if (file.exists()) {
+                    File file = findFileCaseInsensitive(MountRegistry.getSoundsFolder(), customPath);
+                    if (file != null && file.exists()) {
                         return () -> new FileInputStream(file);
                     }
                 }
@@ -89,8 +124,13 @@ public class DynamicMountPackResources implements PackResources {
                         String modelId = folder.getName();
                         File modelFile = findFileInUnpacked(modelId, ".geo.json");
                         if (modelFile != null && modelFile.exists()) {
-                            ResourceLocation loc = new ResourceLocation("rpg_mounts", "geo/" + modelId + ".geo.json");
-                            output.accept(loc, IoSupplier.create(modelFile.toPath()));
+                            try {
+                                String cleanId = sanitizePath(modelId);
+                                ResourceLocation loc = ResourceLocation.tryParse("rpg_mounts:geo/" + cleanId + ".geo.json");
+                                if (loc != null) {
+                                    output.accept(loc, IoSupplier.create(modelFile.toPath()));
+                                }
+                            } catch (Exception ignored) {}
                         }
                     }
                 }
@@ -104,8 +144,13 @@ public class DynamicMountPackResources implements PackResources {
                         String modelId = folder.getName();
                         File animFile = findFileInUnpacked(modelId, ".animation.json");
                         if (animFile != null && animFile.exists()) {
-                            ResourceLocation loc = new ResourceLocation("rpg_mounts", "animations/" + modelId + ".animation.json");
-                            output.accept(loc, IoSupplier.create(animFile.toPath()));
+                            try {
+                                String cleanId = sanitizePath(modelId);
+                                ResourceLocation loc = ResourceLocation.tryParse("rpg_mounts:animations/" + cleanId + ".animation.json");
+                                if (loc != null) {
+                                    output.accept(loc, IoSupplier.create(animFile.toPath()));
+                                }
+                            } catch (Exception ignored) {}
                         }
                     }
                 }
@@ -123,7 +168,7 @@ public class DynamicMountPackResources implements PackResources {
                 if (folders != null) {
                     for (File folder : folders) {
                         if (folder.isDirectory()) {
-                            listOggResourcesRecursive(folder, "", "unpacked/" + folder.getName(), output);
+                            listOggResourcesRecursive(folder, "", "unpacked/" + sanitizePath(folder.getName()), output);
                         }
                     }
                 }
@@ -138,10 +183,18 @@ public class DynamicMountPackResources implements PackResources {
             if (f.isDirectory()) {
                 String nextRel = relativePath.isEmpty() ? f.getName() : relativePath + "/" + f.getName();
                 listOggResourcesRecursive(f, nextRel, prefix, output);
-            } else if (f.isFile() && f.getName().toLowerCase().endsWith(".ogg")) {
-                String resPath = "sounds/" + prefix + "/" + (relativePath.isEmpty() ? f.getName() : relativePath + "/" + f.getName());
-                ResourceLocation loc = new ResourceLocation("rpg_mounts", resPath);
-                output.accept(loc, IoSupplier.create(f.toPath()));
+            } else if (f.isFile() && f.getName().toLowerCase(Locale.ROOT).endsWith(".ogg")) {
+                try {
+                    String rawRel = relativePath.isEmpty() ? f.getName() : relativePath + "/" + f.getName();
+                    String cleanRel = sanitizePath(rawRel);
+                    String resPath = "sounds/" + prefix + "/" + cleanRel;
+                    ResourceLocation loc = ResourceLocation.tryParse("rpg_mounts:" + resPath);
+                    if (loc != null) {
+                        output.accept(loc, IoSupplier.create(f.toPath()));
+                    }
+                } catch (Exception ignored) {
+                    // Prevent any invalid filename from crashing game loading
+                }
             }
         }
     }
@@ -163,7 +216,7 @@ public class DynamicMountPackResources implements PackResources {
                 for (File folder : folders) {
                     if (folder.isDirectory()) {
                         String modelId = folder.getName();
-                        scanOggFolder(folder, "", "unpacked." + modelId, root);
+                        scanOggFolder(folder, "", "unpacked." + sanitizePath(modelId), root);
                     }
                 }
             }
@@ -179,11 +232,12 @@ public class DynamicMountPackResources implements PackResources {
             if (f.isDirectory()) {
                 String nextRel = relativePath.isEmpty() ? f.getName() : relativePath + "/" + f.getName();
                 scanOggFolder(f, nextRel, eventPrefix, root);
-            } else if (f.isFile() && f.getName().toLowerCase().endsWith(".ogg")) {
+            } else if (f.isFile() && f.getName().toLowerCase(Locale.ROOT).endsWith(".ogg")) {
                 String nameNoExt = f.getName().substring(0, f.getName().length() - 4);
                 String soundPath = relativePath.isEmpty() ? nameNoExt : relativePath + "/" + nameNoExt;
+                String cleanSoundPath = sanitizePath(soundPath);
                 
-                String eventSuffix = soundPath.replace('/', '.');
+                String eventSuffix = cleanSoundPath.replace('/', '.');
                 String eventKey = eventPrefix.isEmpty() ? eventSuffix : eventPrefix + "." + eventSuffix;
                 
                 java.util.Map<String, Object> entry = new java.util.HashMap<>();
@@ -195,9 +249,9 @@ public class DynamicMountPackResources implements PackResources {
                 String targetResourcePath;
                 if (eventPrefix.startsWith("unpacked.")) {
                     String modelId = eventPrefix.substring(9);
-                    targetResourcePath = "rpg_mounts:unpacked/" + modelId + "/" + soundPath;
+                    targetResourcePath = "rpg_mounts:unpacked/" + modelId + "/" + cleanSoundPath;
                 } else {
-                    targetResourcePath = "rpg_mounts:custom/" + soundPath;
+                    targetResourcePath = "rpg_mounts:custom/" + cleanSoundPath;
                 }
                 
                 soundObj.put("name", targetResourcePath);
@@ -249,12 +303,12 @@ public class DynamicMountPackResources implements PackResources {
 
     private File findFileInUnpacked(String mountOrModelId, String suffix) {
         File configFolder = MountRegistry.getMountsFolder();
-        File unpackedFolder = new File(configFolder, mountOrModelId);
-        if (unpackedFolder.exists() && unpackedFolder.isDirectory()) {
+        File unpackedFolder = findFileCaseInsensitive(configFolder, mountOrModelId);
+        if (unpackedFolder != null && unpackedFolder.isDirectory()) {
             File[] files = unpackedFolder.listFiles();
             if (files != null) {
                 for (File f : files) {
-                    if (f.getName().toLowerCase().endsWith(suffix)) {
+                    if (f.getName().toLowerCase(Locale.ROOT).endsWith(suffix)) {
                         return f;
                     }
                 }

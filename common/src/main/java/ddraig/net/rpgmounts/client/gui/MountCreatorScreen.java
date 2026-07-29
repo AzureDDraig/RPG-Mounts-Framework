@@ -17,6 +17,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -38,6 +39,7 @@ import java.util.Map;
 public class MountCreatorScreen extends Screen {
     private final List<MountData> templatesList = new ArrayList<>();
     private MountData selectedTemplate;
+    private float templateListScrollAmount = 0.0f;
     private String activeTab = "General"; // General, Model & Anims, Stats, Combat, Sounds & FX, Seating & Rules
 
     private static String[] cachedVanillaModels = null;
@@ -92,6 +94,16 @@ public class MountCreatorScreen extends Screen {
     private EditBox modelIdField;
     private EditBox textureField;
     private EditBox animField;
+
+    // Animation Mapping HUD EditBoxes
+    private EditBox animIdleField;
+    private EditBox animWalkField;
+    private EditBox animRunField;
+    private EditBox animSwimField;
+    private EditBox animFlyField;
+    private EditBox animHoverField;
+    private EditBox animAttackField;
+    private EditBox animJumpField;
 
     // Combat EditBoxes
     private EditBox abilityNameField;
@@ -153,6 +165,11 @@ public class MountCreatorScreen extends Screen {
         cachedModelList = null;
         templatesList.clear();
         templatesList.addAll(MountRegistry.loadedTemplates.values());
+        templatesList.sort((a, b) -> {
+            String nameA = a.name != null && !a.name.isEmpty() ? a.name : a.id;
+            String nameB = b.name != null && !b.name.isEmpty() ? b.name : b.id;
+            return nameA.compareToIgnoreCase(nameB);
+        });
 
         if (selectedTemplate == null && !templatesList.isEmpty()) {
             selectedTemplate = templatesList.get(0);
@@ -169,37 +186,75 @@ public class MountCreatorScreen extends Screen {
 
         // Initialize general tab textfields
         this.nameField = new EditBox(this.font, formX + 8, formY + 20, formW - 16, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.name"));
+        this.nameField.setMaxLength(1024);
         this.descField = new MultiLineEditBox(this.font, formX + 8, formY + 46, formW - 16, 40, Component.translatable("gui.rpg_mounts.creator.placeholder.description"), Component.translatable("gui.rpg_mounts.creator.placeholder.description"));
 
         // Model fields
         this.modelIdField = new EditBox(this.font, formX + 8, formY + 46, formW - 16, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.model_path"));
+        this.modelIdField.setMaxLength(1024);
         this.textureField = new EditBox(this.font, formX + 8, formY + 72, formW - 16, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.texture_path"));
+        this.textureField.setMaxLength(1024);
         this.animField = new EditBox(this.font, formX + 8, formY + 98, formW - 16, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.animation_path"));
+        this.animField.setMaxLength(1024);
+
+        // Animation Mapping HUD fields
+        this.animIdleField = new EditBox(this.font, 0, 0, 110, 12, Component.literal("Idle"));
+        this.animIdleField.setMaxLength(1024);
+        this.animWalkField = new EditBox(this.font, 0, 0, 110, 12, Component.literal("Walk"));
+        this.animWalkField.setMaxLength(1024);
+        this.animRunField = new EditBox(this.font, 0, 0, 110, 12, Component.literal("Run"));
+        this.animRunField.setMaxLength(1024);
+        this.animSwimField = new EditBox(this.font, 0, 0, 110, 12, Component.literal("Swim"));
+        this.animSwimField.setMaxLength(1024);
+        this.animFlyField = new EditBox(this.font, 0, 0, 110, 12, Component.literal("Fly"));
+        this.animFlyField.setMaxLength(1024);
+        this.animHoverField = new EditBox(this.font, 0, 0, 110, 12, Component.literal("Hover"));
+        this.animHoverField.setMaxLength(1024);
+        this.animAttackField = new EditBox(this.font, 0, 0, 110, 12, Component.literal("Attack"));
+        this.animAttackField.setMaxLength(1024);
+        this.animJumpField = new EditBox(this.font, 0, 0, 110, 12, Component.literal("Jump"));
+        this.animJumpField.setMaxLength(1024);
 
         // Ability fields
         this.abilityNameField = new EditBox(this.font, formX + 8, formY + 44, formW - 16, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.ability_name"));
+        this.abilityNameField.setMaxLength(1024);
         this.abilityDescField = new EditBox(this.font, formX + 8, formY + 68, formW - 16, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.ability_desc"));
+        this.abilityDescField.setMaxLength(1024);
         this.abilityParticleField = new EditBox(this.font, formX + 8, formY + 92, formW - 16, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.ability_particle"));
+        this.abilityParticleField.setMaxLength(1024);
         this.abilitySoundField = new EditBox(this.font, formX + 8, formY + 116, formW - 16, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.ability_sound"));
+        this.abilitySoundField.setMaxLength(1024);
         this.abilityAnimField = new EditBox(this.font, formX + 8, formY + 140, formW - 16, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.ability_anim"));
+        this.abilityAnimField.setMaxLength(1024);
 
         // Sounds fields
         this.soundAmbientField = new EditBox(this.font, formX + 8, formY + 16, formW - 28, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.ambient_sound"));
+        this.soundAmbientField.setMaxLength(1024);
         this.soundStepField = new EditBox(this.font, formX + 8, formY + 40, formW - 28, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.step_sound"));
+        this.soundStepField.setMaxLength(1024);
         this.soundHurtField = new EditBox(this.font, formX + 8, formY + 64, formW - 28, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.hurt_sound"));
+        this.soundHurtField.setMaxLength(1024);
         this.soundDeathField = new EditBox(this.font, formX + 8, formY + 88, formW - 28, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.death_sound"));
+        this.soundDeathField.setMaxLength(1024);
         this.spawnParticleField = new EditBox(this.font, formX + 8, formY + 112, formW - 16, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.spawn_particle"));
+        this.spawnParticleField.setMaxLength(1024);
         this.spawnSoundField = new EditBox(this.font, formX + 8, formY + 136, formW - 28, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.spawn_sound"));
+        this.spawnSoundField.setMaxLength(1024);
 
         // Combat stats fields
         this.combatStrengthField = new EditBox(this.font, formX + 8, formY + 44, formW - 16, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.strength"));
+        this.combatStrengthField.setMaxLength(1024);
         this.combatAttackSpeedField = new EditBox(this.font, formX + 8, formY + 70, formW - 16, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.attack_speed"));
+        this.combatAttackSpeedField.setMaxLength(1024);
 
         this.flightParticleField = new EditBox(this.font, formX + 8, formY + 176, formW - 16, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.flight_particle"));
+        this.flightParticleField.setMaxLength(1024);
         this.groundParticleField = new EditBox(this.font, formX + 8, formY + 176, formW - 16, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.ground_particle"));
+        this.groundParticleField.setMaxLength(1024);
 
         // Popup Item Selector Search Box
         this.itemSearchBox = new EditBox(this.font, (this.width - 160) / 2 + 10, (this.height - 180) / 2 + 20, 140, 12, Component.translatable("gui.rpg_mounts.creator.placeholder.search"));
+        this.itemSearchBox.setMaxLength(1024);
 
         // Register edit boxes as widgets
         this.addWidget(this.nameField);
@@ -223,6 +278,15 @@ public class MountCreatorScreen extends Screen {
         this.addWidget(this.flightParticleField);
         this.addWidget(this.groundParticleField);
         this.addWidget(this.itemSearchBox);
+
+        this.addWidget(this.animIdleField);
+        this.addWidget(this.animWalkField);
+        this.addWidget(this.animRunField);
+        this.addWidget(this.animSwimField);
+        this.addWidget(this.animFlyField);
+        this.addWidget(this.animHoverField);
+        this.addWidget(this.animAttackField);
+        this.addWidget(this.animJumpField);
 
         updateFieldValues();
         updateWidgetsVisibility();
@@ -252,6 +316,17 @@ public class MountCreatorScreen extends Screen {
         modelIdField.setValue(selectedTemplate.modelId != null ? selectedTemplate.modelId : "");
         textureField.setValue(selectedTemplate.texturePath != null ? selectedTemplate.texturePath : "");
         animField.setValue(selectedTemplate.animationPath != null ? selectedTemplate.animationPath : "");
+
+        ddraig.net.rpgmounts.config.AnimationMappingConfig.AnimationNames animMap = 
+            ddraig.net.rpgmounts.config.AnimationMappingConfig.get().getMappingFor(selectedTemplate.id);
+        animIdleField.setValue(animMap.idle != null ? animMap.idle : "idle");
+        animWalkField.setValue(animMap.walk != null ? animMap.walk : "walk");
+        animRunField.setValue(animMap.run != null ? animMap.run : "run");
+        animSwimField.setValue(animMap.swim != null ? animMap.swim : "swim");
+        animFlyField.setValue(animMap.fly != null ? animMap.fly : "fly");
+        animHoverField.setValue(animMap.hover != null ? animMap.hover : "hover");
+        animAttackField.setValue(animMap.attack != null ? animMap.attack : "attack");
+        animJumpField.setValue(animMap.jump != null ? animMap.jump : "jump");
 
         MountData.AbilityData ability = (selectedAbilityIndex == 1) ? selectedTemplate.combat.ability1 : selectedTemplate.combat.ability2;
         if (ability != null) {
@@ -284,6 +359,14 @@ public class MountCreatorScreen extends Screen {
         descField.visible = general;
         descField.active = general;
 
+        boolean hasAnimFile = selectedTemplate != null && 
+                              "geckolib".equalsIgnoreCase(selectedTemplate.modelType) && 
+                              selectedTemplate.animationPath != null && 
+                              !selectedTemplate.animationPath.trim().isEmpty();
+        if ("Animations".equals(activeTab) && !hasAnimFile) {
+            activeTab = "Model & Anims";
+        }
+
         boolean model = "Model & Anims".equals(activeTab) && selectedTemplate != null && !isItemSelectorOpen;
         boolean customModel = model && !selectedTemplate.modelType.equals("vanilla") && !selectedTemplate.modelType.equals("mcmodel");
         modelIdField.visible = customModel;
@@ -293,11 +376,29 @@ public class MountCreatorScreen extends Screen {
         animField.visible = model && selectedTemplate.modelType.equals("geckolib");
         animField.active = model && selectedTemplate.modelType.equals("geckolib");
 
+        boolean animsTab = "Animations".equals(activeTab) && selectedTemplate != null && !isItemSelectorOpen;
+        animIdleField.visible = animsTab;
+        animIdleField.active = animsTab;
+        animWalkField.visible = animsTab;
+        animWalkField.active = animsTab;
+        animRunField.visible = animsTab;
+        animRunField.active = animsTab;
+        animSwimField.visible = animsTab;
+        animSwimField.active = animsTab;
+        animFlyField.visible = animsTab;
+        animFlyField.active = animsTab;
+        animHoverField.visible = animsTab;
+        animHoverField.active = animsTab;
+        animAttackField.visible = animsTab;
+        animAttackField.active = animsTab;
+        animJumpField.visible = animsTab;
+        animJumpField.active = animsTab;
+
         boolean showFlight = model && selectedTemplate.category.equalsIgnoreCase("FLYING") && !selectedTemplate.modelType.equals("mcmodel");
         flightParticleField.visible = showFlight;
         flightParticleField.active = showFlight;
 
-        boolean showGround = model && (selectedTemplate.category.equalsIgnoreCase("GROUND") || selectedTemplate.category.equalsIgnoreCase("SURFACE_WATER")) && !selectedTemplate.modelType.equals("mcmodel");
+        boolean showGround = model && (selectedTemplate.category.equalsIgnoreCase("GROUND") || selectedTemplate.category.equalsIgnoreCase("SURFACE_WATER") || selectedTemplate.category.equalsIgnoreCase("AQUATIC")) && !selectedTemplate.modelType.equals("mcmodel");
         groundParticleField.visible = showGround;
         groundParticleField.active = showGround;
 
@@ -471,6 +572,14 @@ public class MountCreatorScreen extends Screen {
         if (modelIdField != null) modelIdField.tick();
         if (textureField != null) textureField.tick();
         if (animField != null) animField.tick();
+        if (animIdleField != null) animIdleField.tick();
+        if (animWalkField != null) animWalkField.tick();
+        if (animRunField != null) animRunField.tick();
+        if (animSwimField != null) animSwimField.tick();
+        if (animFlyField != null) animFlyField.tick();
+        if (animHoverField != null) animHoverField.tick();
+        if (animAttackField != null) animAttackField.tick();
+        if (animJumpField != null) animJumpField.tick();
         if (combatStrengthField != null) combatStrengthField.tick();
         if (combatAttackSpeedField != null) combatAttackSpeedField.tick();
         if (flightParticleField != null) flightParticleField.tick();
@@ -486,6 +595,9 @@ public class MountCreatorScreen extends Screen {
             if (modelIdField != null && modelIdField.isFocused()) {
                 focused = modelIdField;
                 yOffset = 58;
+            } else if (animField != null && animField.isFocused() && animField.visible) {
+                focused = animField;
+                yOffset = 110;
             } else if (flightParticleField != null && flightParticleField.isFocused() && flightParticleField.visible) {
                 focused = flightParticleField;
                 yOffset = 188;
@@ -497,6 +609,9 @@ public class MountCreatorScreen extends Screen {
             if (focused != null) {
                 if (focused == flightParticleField || focused == groundParticleField) {
                     activeSuggestions = getParticleSuggestions(focused.getValue());
+                } else if (focused == animField) {
+                    String modelOrTemplate = selectedTemplate != null ? selectedTemplate.modelId : "";
+                    activeSuggestions = ddraig.net.rpgmounts.data.MountRegistry.getAnimationSuggestions(modelOrTemplate, focused.getValue());
                 } else {
                     activeSuggestions = getModelSuggestions(focused.getValue());
                 }
@@ -507,6 +622,51 @@ public class MountCreatorScreen extends Screen {
                 showModelSuggestions = false;
                 activeModelField = null;
             }
+        } else if (activeTab.equals("Animations")) {
+            EditBox focused = null;
+            int yOffset = 0;
+            if (animIdleField != null && animIdleField.isFocused() && animIdleField.visible) {
+                focused = animIdleField;
+                yOffset = 32 + 12;
+            } else if (animWalkField != null && animWalkField.isFocused() && animWalkField.visible) {
+                focused = animWalkField;
+                yOffset = 52 + 12;
+            } else if (animRunField != null && animRunField.isFocused() && animRunField.visible) {
+                focused = animRunField;
+                yOffset = 72 + 12;
+            } else if (animSwimField != null && animSwimField.isFocused() && animSwimField.visible) {
+                focused = animSwimField;
+                yOffset = 92 + 12;
+            } else if (animFlyField != null && animFlyField.isFocused() && animFlyField.visible) {
+                focused = animFlyField;
+                yOffset = 112 + 12;
+            } else if (animHoverField != null && animHoverField.isFocused() && animHoverField.visible) {
+                focused = animHoverField;
+                yOffset = 132 + 12;
+            } else if (animAttackField != null && animAttackField.isFocused() && animAttackField.visible) {
+                focused = animAttackField;
+                yOffset = 152 + 12;
+            } else if (animJumpField != null && animJumpField.isFocused() && animJumpField.visible) {
+                focused = animJumpField;
+                yOffset = 172 + 12;
+            }
+
+            if (focused != null) {
+                String modelOrTemplate = selectedTemplate != null ? selectedTemplate.modelId : "";
+                activeSuggestions = ddraig.net.rpgmounts.data.MountRegistry.getAnimationSuggestions(modelOrTemplate, focused.getValue());
+                showModelSuggestions = true;
+                activeModelField = focused;
+                modelSuggestionYOffset = yOffset;
+            } else {
+                showModelSuggestions = false;
+                activeModelField = null;
+            }
+        } else if (activeTab.equals("Abilities") && abilityAnimField != null && abilityAnimField.isFocused() && abilityAnimField.visible) {
+            String modelOrTemplate = selectedTemplate != null ? selectedTemplate.modelId : "";
+            activeSuggestions = ddraig.net.rpgmounts.data.MountRegistry.getAnimationSuggestions(modelOrTemplate, abilityAnimField.getValue());
+            showModelSuggestions = true;
+            activeModelField = abilityAnimField;
+            modelSuggestionYOffset = 152;
         } else {
             showModelSuggestions = false;
             activeModelField = null;
@@ -570,26 +730,49 @@ public class MountCreatorScreen extends Screen {
 
     private List<TabBounds> calculateTabBounds(int left, int top) {
         List<TabBounds> bounds = new ArrayList<>();
-        String[] tabIds = {"General", "Model & Anims", "Stats", "Combat", "Abilities", "Sounds & FX", "Seating & Rules"};
-        String[] tabKeys = {
-            "gui.rpg_mounts.creator.tab.general",
-            "gui.rpg_mounts.creator.tab.model",
-            "gui.rpg_mounts.creator.tab.stats",
-            "gui.rpg_mounts.creator.tab.combat",
-            "gui.rpg_mounts.creator.tab.abilities",
-            "gui.rpg_mounts.creator.tab.sounds",
-            "gui.rpg_mounts.creator.tab.seating"
-        };
+        boolean showAnimationsTab = selectedTemplate != null && 
+                                    "geckolib".equalsIgnoreCase(selectedTemplate.modelType) && 
+                                    selectedTemplate.animationPath != null && 
+                                    !selectedTemplate.animationPath.trim().isEmpty();
+
+        List<String> idList = new ArrayList<>();
+        List<Component> labelList = new ArrayList<>();
+
+        idList.add("General");
+        labelList.add(Component.translatable("gui.rpg_mounts.creator.tab.general"));
+
+        idList.add("Model & Anims");
+        labelList.add(Component.translatable("gui.rpg_mounts.creator.tab.model"));
+
+        if (showAnimationsTab) {
+            idList.add("Animations");
+            labelList.add(Component.translatable("gui.rpg_mounts.creator.tab.animations"));
+        }
+
+        idList.add("Stats");
+        labelList.add(Component.translatable("gui.rpg_mounts.creator.tab.stats"));
+
+        idList.add("Combat");
+        labelList.add(Component.translatable("gui.rpg_mounts.creator.tab.combat"));
+
+        idList.add("Abilities");
+        labelList.add(Component.translatable("gui.rpg_mounts.creator.tab.abilities"));
+
+        idList.add("Sounds & FX");
+        labelList.add(Component.translatable("gui.rpg_mounts.creator.tab.sounds"));
+
+        idList.add("Seating & Rules");
+        labelList.add(Component.translatable("gui.rpg_mounts.creator.tab.seating"));
 
         List<List<TabBounds>> rows = new ArrayList<>();
         List<TabBounds> currentRow = new ArrayList<>();
         int currentX = left + 110;
         int maxX = left + this.panelW - 10;
 
-        for (int i = 0; i < tabIds.length; i++) {
-            Component labelComp = Component.translatable(tabKeys[i]);
+        for (int i = 0; i < idList.size(); i++) {
+            Component labelComp = labelList.get(i);
             int w = this.font.width(labelComp) + 12;
-            TabBounds tb = new TabBounds(tabIds[i], labelComp);
+            TabBounds tb = new TabBounds(idList.get(i), labelComp);
             tb.w = w;
             tb.h = 15;
 
@@ -648,11 +831,34 @@ public class MountCreatorScreen extends Screen {
 
         UIHelper.drawRecessedSlot(graphics, listX, listY, listW, listH, borderC, slotC);
 
-        int itemY = listY + 5;
+        int totalContentH = templatesList.size() * 12 + 10;
+        int maxListScroll = Math.max(0, totalContentH - listH);
+        this.templateListScrollAmount = Mth.clamp(this.templateListScrollAmount, 0, maxListScroll);
+
+        double guiScale = this.minecraft.getWindow().getGuiScale();
+        int scissorX = (int) ((listX + 2) * guiScale);
+        int scissorY = (int) ((this.minecraft.getWindow().getGuiScaledHeight() - (listY + listH - 2)) * guiScale);
+        int scissorW = (int) ((listW - 4) * guiScale);
+        int scissorH = (int) ((listH - 4) * guiScale);
+
+        com.mojang.blaze3d.systems.RenderSystem.enableScissor(scissorX, scissorY, scissorW, scissorH);
+        int itemY = listY + 5 - (int) this.templateListScrollAmount;
         for (MountData m : templatesList) {
-            int c = (m == selectedTemplate) ? textActiveC : textNormalC;
-            graphics.drawString(this.font, truncate(m.name, 12), listX + 5, itemY, c, false);
+            if (itemY + 12 >= listY && itemY <= listY + listH) {
+                int c = (m == selectedTemplate) ? textActiveC : textNormalC;
+                graphics.drawString(this.font, truncate(m.name, 12), listX + 5, itemY, c, false);
+            }
             itemY += 12;
+        }
+        com.mojang.blaze3d.systems.RenderSystem.disableScissor();
+
+        if (maxListScroll > 0) {
+            int scrollbarW = 3;
+            int scrollbarX = listX + listW - scrollbarW - 2;
+            int thumbH = Math.max(10, (int) ((float) listH / totalContentH * listH));
+            int thumbY = listY + (int) ((this.templateListScrollAmount / maxListScroll) * (listH - thumbH));
+            graphics.fill(scrollbarX, listY + 2, scrollbarX + scrollbarW, listY + listH - 2, 0x40000000);
+            graphics.fill(scrollbarX, thumbY, scrollbarX + scrollbarW, thumbY + thumbH, 0xFF888888);
         }
 
         // Add/Del Buttons
@@ -724,12 +930,12 @@ public class MountCreatorScreen extends Screen {
                 int centeredY = (viewportY + viewportH / 2) + (int) ((preview.getBbHeight() * scaleFactor) / 2);
 
                 double scaleVal = this.minecraft.getWindow().getGuiScale();
-                int scissorX = (int) (viewportX * scaleVal);
-                int scissorY = (int) ((this.minecraft.getWindow().getGuiScaledHeight() - (viewportY + viewportH)) * scaleVal);
-                int scissorW = (int) (viewportW * scaleVal);
-                int scissorH = (int) (viewportH * scaleVal);
+                int vpScissorX = (int) (viewportX * scaleVal);
+                int vpScissorY = (int) ((this.minecraft.getWindow().getGuiScaledHeight() - (viewportY + viewportH)) * scaleVal);
+                int vpScissorW = (int) (viewportW * scaleVal);
+                int vpScissorH = (int) (viewportH * scaleVal);
 
-                com.mojang.blaze3d.systems.RenderSystem.enableScissor(scissorX, scissorY, scissorW, scissorH);
+                com.mojang.blaze3d.systems.RenderSystem.enableScissor(vpScissorX, vpScissorY, vpScissorW, vpScissorH);
                 renderMountPreview(graphics, viewCenterX, centeredY, scaleFactor, preview);
                 com.mojang.blaze3d.systems.RenderSystem.disableScissor();
 
@@ -926,7 +1132,7 @@ public class MountCreatorScreen extends Screen {
                     flightParticleField.setX(x + 8);
                     flightParticleField.setY(y + 176);
                     flightParticleField.render(graphics, mouseX, mouseY, 0.0f);
-                } else if (selectedTemplate.category.equalsIgnoreCase("GROUND") || selectedTemplate.category.equalsIgnoreCase("SURFACE_WATER")) {
+                } else if (selectedTemplate.category.equalsIgnoreCase("GROUND") || selectedTemplate.category.equalsIgnoreCase("SURFACE_WATER") || selectedTemplate.category.equalsIgnoreCase("AQUATIC")) {
                     graphics.drawString(this.font, Component.translatable("gui.rpg_mounts.creator.model.ground_particle"), x + 8, y + 166, normalC, false);
                     groundParticleField.setX(x + 8);
                     groundParticleField.setY(y + 176);
@@ -1000,8 +1206,11 @@ public class MountCreatorScreen extends Screen {
                 }
             }
 
-            // MODEL AUTOCOMPLETE SUGGESTIONS DROPDOWN
+            // MODEL AUTOCOMPLETE SUGGESTIONS DROPDOWN FOR MODEL TAB WITH ELEVATED Z-LEVEL
             if (showModelSuggestions && !activeSuggestions.isEmpty() && activeModelField != null) {
+                graphics.pose().pushPose();
+                graphics.pose().translate(0, 0, 500.0f);
+
                 int dropX = x + 8;
                 int dropY = y + modelSuggestionYOffset;
                 int dropW = w - 16;
@@ -1016,7 +1225,7 @@ public class MountCreatorScreen extends Screen {
 
                 int borderC = RPGWaypointsIntegration.getThemeColor("panelBorder", 0xFFDFD0A0);
 
-                graphics.fill(dropX, dropY, dropX + dropW, dropY + dropH, 0xFF1C1C1C);
+                graphics.fill(dropX, dropY, dropX + dropW, dropY + dropH, 0xFF161616);
                 UIHelper.drawOutline(graphics, dropX, dropY, dropW, dropH, borderC);
 
                 for (int i = 0; i < visibleRows; i++) {
@@ -1038,8 +1247,123 @@ public class MountCreatorScreen extends Screen {
                     }
                     graphics.drawString(this.font, display, dropX + 4, itemY + 2, textColor, false);
                 }
+
+                graphics.pose().popPose();
             }
 
+        } else if (activeTab.equals("Animations")) {
+            graphics.drawString(this.font, "§6Animation Triggers", x + 8, y + 8, 0xFFD4AF37, false);
+            String fileInfo = selectedTemplate != null && selectedTemplate.animationPath != null ? selectedTemplate.animationPath : "";
+            int maxFWidth = w - 16;
+            if (this.font.width(fileInfo) > maxFWidth) {
+                fileInfo = this.font.plainSubstrByWidth(fileInfo, maxFWidth - 10) + "..";
+            }
+            graphics.drawString(this.font, "§7" + fileInfo, x + 8, y + 20, 0xFFAAAAAA, false);
+
+            int labelX = x + 8;
+            int fieldX = x + 44;
+            int fieldW = w - 52;
+            int ry = y + 34;
+
+            graphics.drawString(this.font, "Idle:", labelX, ry + 2, normalC, false);
+            animIdleField.setX(fieldX);
+            animIdleField.setY(ry);
+            animIdleField.setWidth(fieldW);
+            animIdleField.render(graphics, mouseX, mouseY, 0.0f);
+
+            ry += 20;
+            graphics.drawString(this.font, "Walk:", labelX, ry + 2, normalC, false);
+            animWalkField.setX(fieldX);
+            animWalkField.setY(ry);
+            animWalkField.setWidth(fieldW);
+            animWalkField.render(graphics, mouseX, mouseY, 0.0f);
+
+            ry += 20;
+            graphics.drawString(this.font, "Run:", labelX, ry + 2, normalC, false);
+            animRunField.setX(fieldX);
+            animRunField.setY(ry);
+            animRunField.setWidth(fieldW);
+            animRunField.render(graphics, mouseX, mouseY, 0.0f);
+
+            ry += 20;
+            graphics.drawString(this.font, "Swim:", labelX, ry + 2, normalC, false);
+            animSwimField.setX(fieldX);
+            animSwimField.setY(ry);
+            animSwimField.setWidth(fieldW);
+            animSwimField.render(graphics, mouseX, mouseY, 0.0f);
+
+            ry += 20;
+            graphics.drawString(this.font, "Fly:", labelX, ry + 2, normalC, false);
+            animFlyField.setX(fieldX);
+            animFlyField.setY(ry);
+            animFlyField.setWidth(fieldW);
+            animFlyField.render(graphics, mouseX, mouseY, 0.0f);
+
+            ry += 20;
+            graphics.drawString(this.font, "Hover:", labelX, ry + 2, normalC, false);
+            animHoverField.setX(fieldX);
+            animHoverField.setY(ry);
+            animHoverField.setWidth(fieldW);
+            animHoverField.render(graphics, mouseX, mouseY, 0.0f);
+
+            ry += 20;
+            graphics.drawString(this.font, "Atk:", labelX, ry + 2, normalC, false);
+            animAttackField.setX(fieldX);
+            animAttackField.setY(ry);
+            animAttackField.setWidth(fieldW);
+            animAttackField.render(graphics, mouseX, mouseY, 0.0f);
+
+            ry += 20;
+            graphics.drawString(this.font, "Jump:", labelX, ry + 2, normalC, false);
+            animJumpField.setX(fieldX);
+            animJumpField.setY(ry);
+            animJumpField.setWidth(fieldW);
+            animJumpField.render(graphics, mouseX, mouseY, 0.0f);
+
+            // MODEL/ANIMATION AUTOCOMPLETE SUGGESTIONS DROPDOWN FOR ANIMATIONS TAB
+            if (showModelSuggestions && !activeSuggestions.isEmpty() && activeModelField != null) {
+                graphics.pose().pushPose();
+                graphics.pose().translate(0, 0, 500.0f);
+
+                int dropX = fieldX;
+                int dropY = y + modelSuggestionYOffset;
+                int dropW = fieldW;
+                int rowH = 12;
+                int maxVisibleRows = 5;
+                int visibleRows = Math.min(maxVisibleRows, activeSuggestions.size());
+                int dropH = visibleRows * rowH;
+
+                if (modelSuggestionYOffset + dropH > 210) {
+                    dropY = y + (modelSuggestionYOffset - 12) - dropH;
+                }
+
+                int borderC = RPGWaypointsIntegration.getThemeColor("panelBorder", 0xFFDFD0A0);
+
+                graphics.fill(dropX, dropY, dropX + dropW, dropY + dropH, 0xFF161616);
+                UIHelper.drawOutline(graphics, dropX, dropY, dropW, dropH, borderC);
+
+                for (int i = 0; i < visibleRows; i++) {
+                    int idx = i + suggestionsScrollOffset;
+                    if (idx >= activeSuggestions.size()) break;
+                    String suggestion = activeSuggestions.get(idx);
+                    int itemY = dropY + i * rowH;
+
+                    boolean hovered = mouseX >= dropX && mouseX <= dropX + dropW && mouseY >= itemY && mouseY <= itemY + rowH;
+                    int textColor = hovered ? activeC : normalC;
+                    if (hovered) {
+                        graphics.fill(dropX + 1, itemY, dropX + dropW - 1, itemY + rowH, 0xFF2D2D2D);
+                    }
+                    
+                    String display = suggestion;
+                    int maxTextWidth = dropW - 8;
+                    if (this.font.width(display) > maxTextWidth) {
+                        display = this.font.plainSubstrByWidth(display, maxTextWidth - this.font.width("...")) + "...";
+                    }
+                    graphics.drawString(this.font, display, dropX + 4, itemY + 2, textColor, false);
+                }
+
+                graphics.pose().popPose();
+            }
         } else if (activeTab.equals("Stats")) {
             int rowY = y + 6;
             graphics.drawString(this.font, Component.translatable("gui.rpg_mounts.creator.stats.hp"), x + 6, rowY + 3, normalC, false);
@@ -1562,7 +1886,7 @@ public class MountCreatorScreen extends Screen {
             }
         }
 
-        if (showModelSuggestions && !activeSuggestions.isEmpty() && activeTab.equals("Model & Anims") && activeModelField != null) {
+        if (showModelSuggestions && !activeSuggestions.isEmpty() && (activeTab.equals("Model & Anims") || activeTab.equals("Animations")) && activeModelField != null) {
             int formX = left + 110;
             int formY = top + 42;
             int dropX = formX + 8;
@@ -1621,6 +1945,32 @@ public class MountCreatorScreen extends Screen {
                             }
                         }
                         selectedTemplate.resetDimensions();
+                    } else if (activeModelField == animField) {
+                        animField.setValue(selected);
+                        selectedTemplate.animationPath = selected;
+                    } else if (activeModelField == animIdleField || activeModelField == animWalkField ||
+                               activeModelField == animRunField || activeModelField == animSwimField ||
+                               activeModelField == animFlyField || activeModelField == animHoverField ||
+                               activeModelField == animAttackField || activeModelField == animJumpField) {
+                        activeModelField.setValue(selected);
+                        if (selectedTemplate != null) {
+                            ddraig.net.rpgmounts.config.AnimationMappingConfig.AnimationNames map = 
+                                ddraig.net.rpgmounts.config.AnimationMappingConfig.get().getMappingFor(selectedTemplate.id);
+                            if (activeModelField == animIdleField) map.idle = selected;
+                            else if (activeModelField == animWalkField) map.walk = selected;
+                            else if (activeModelField == animRunField) map.run = selected;
+                            else if (activeModelField == animSwimField) map.swim = selected;
+                            else if (activeModelField == animFlyField) map.fly = selected;
+                            else if (activeModelField == animHoverField) map.hover = selected;
+                            else if (activeModelField == animAttackField) map.attack = selected;
+                            else if (activeModelField == animJumpField) map.jump = selected;
+                        }
+                    } else if (activeModelField == abilityAnimField) {
+                        abilityAnimField.setValue(selected);
+                        MountData.AbilityData ab = (selectedAbilityIndex == 1) ? selectedTemplate.combat.ability1 : selectedTemplate.combat.ability2;
+                        if (ab != null) {
+                            ab.animationName = selected;
+                        }
                     } else if (activeModelField == flightParticleField) {
                         flightParticleField.setValue(selected);
                         selectedTemplate.flightParticle = selected;
@@ -1715,18 +2065,17 @@ public class MountCreatorScreen extends Screen {
         int listH = panelH - 72;
 
         // Click sidebar templates list
-        int itemY = listY + 5;
-        for (MountData m : templatesList) {
-            if (mouseX >= listX && mouseX <= listX + listW && mouseY >= itemY && mouseY <= itemY + 12) {
+        if (mouseX >= listX && mouseX <= listX + listW && mouseY >= listY && mouseY <= listY + listH) {
+            int clickedIdx = (int) ((mouseY - listY - 5 + this.templateListScrollAmount) / 12);
+            if (clickedIdx >= 0 && clickedIdx < templatesList.size()) {
                 saveTextFieldsToActiveTemplate(); // Save current before switching!
-                selectedTemplate = m;
+                selectedTemplate = templatesList.get(clickedIdx);
                 previewZoom = 1.0f; // Reset zoom on template change
                 updateFieldValues();
                 updateWidgetsVisibility();
                 updateDummyRiders();
                 return true;
             }
-            itemY += 12;
         }
 
         // Add Mount template click
@@ -2225,6 +2574,27 @@ public class MountCreatorScreen extends Screen {
         try {
             selectedTemplate.combat.attackSpeed = Double.parseDouble(combatAttackSpeedField.getValue());
         } catch (NumberFormatException ignored) {}
+
+        boolean isGecko = selectedTemplate.modelType.equalsIgnoreCase("geckolib") || !selectedTemplate.animationPath.isEmpty() || (animField != null && !animField.getValue().isEmpty());
+        if (isGecko) {
+            ddraig.net.rpgmounts.config.AnimationMappingConfig.AnimationNames map = new ddraig.net.rpgmounts.config.AnimationMappingConfig.AnimationNames();
+            map.idle = animIdleField.getValue();
+            map.walk = animWalkField.getValue();
+            map.run = animRunField.getValue();
+            map.swim = animSwimField.getValue();
+            map.fly = animFlyField.getValue();
+            map.hover = animHoverField.getValue();
+            map.attack = animAttackField.getValue();
+            map.jump = animJumpField.getValue();
+            
+            ddraig.net.rpgmounts.config.AnimationMappingConfig.get().mappings.put(selectedTemplate.id, map);
+            ddraig.net.rpgmounts.config.AnimationMappingConfig.save();
+
+            FriendlyByteBuf mapBuf = new FriendlyByteBuf(Unpooled.buffer());
+            mapBuf.writeUtf(selectedTemplate.id);
+            mapBuf.writeUtf(new com.google.gson.Gson().toJson(map));
+            NetworkManager.sendToServer(ModPackets.C2S_SAVE_ANIMATION_MAPPINGS, mapBuf);
+        }
     }
 
     @Override
@@ -2314,6 +2684,18 @@ public class MountCreatorScreen extends Screen {
             }
             return true;
         }
+
+        int listX = left + 10;
+        int listY = top + 25;
+        int listW = 90;
+        int listH = panelH - 72;
+        if (mouseX >= listX && mouseX <= listX + listW && mouseY >= listY && mouseY <= listY + listH) {
+            int totalContentH = templatesList.size() * 12 + 10;
+            int maxListScroll = Math.max(0, totalContentH - listH);
+            this.templateListScrollAmount = Mth.clamp(this.templateListScrollAmount - (float)(amount * 12.0), 0, maxListScroll);
+            return true;
+        }
+
         return super.mouseScrolled(mouseX, mouseY, amount);
     }
 
@@ -2528,6 +2910,61 @@ public class MountCreatorScreen extends Screen {
         String playSymbol = "▶";
         int textW = this.font.width(playSymbol);
         graphics.drawString(this.font, playSymbol, btnX + (12 - textW) / 2 + 1, btnY + 2, 0xFFFFFFFF, false);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_TAB) {
+            if (showModelSuggestions && !activeSuggestions.isEmpty() && activeModelField != null && activeModelField.isFocused()) {
+                int idx = Math.min(suggestionsScrollOffset, activeSuggestions.size() - 1);
+                if (idx >= 0 && idx < activeSuggestions.size()) {
+                    String selected = activeSuggestions.get(idx);
+                    activeModelField.setValue(selected);
+                    if (activeModelField == modelIdField && selectedTemplate != null) {
+                        selectedTemplate.modelId = selected;
+                    } else if (activeModelField == animField && selectedTemplate != null) {
+                        selectedTemplate.animationPath = selected;
+                    } else if (activeModelField == abilityAnimField && selectedTemplate != null) {
+                        abilityAnimField.setValue(selected);
+                        MountData.AbilityData ab = (selectedAbilityIndex == 1) ? selectedTemplate.combat.ability1 : selectedTemplate.combat.ability2;
+                        if (ab != null) {
+                            ab.animationName = selected;
+                        }
+                    } else if (activeModelField == flightParticleField && selectedTemplate != null) {
+                        selectedTemplate.flightParticle = selected;
+                    } else if (activeModelField == groundParticleField && selectedTemplate != null) {
+                        selectedTemplate.groundParticle = selected;
+                    } else if ((activeModelField == animIdleField || activeModelField == animWalkField ||
+                                activeModelField == animRunField || activeModelField == animSwimField ||
+                                activeModelField == animFlyField || activeModelField == animHoverField ||
+                                activeModelField == animAttackField || activeModelField == animJumpField) && selectedTemplate != null) {
+                        activeModelField.setValue(selected);
+                        ddraig.net.rpgmounts.config.AnimationMappingConfig.AnimationNames map = 
+                            ddraig.net.rpgmounts.config.AnimationMappingConfig.get().getMappingFor(selectedTemplate.id);
+                        if (activeModelField == animIdleField) map.idle = selected;
+                        else if (activeModelField == animWalkField) map.walk = selected;
+                        else if (activeModelField == animRunField) map.run = selected;
+                        else if (activeModelField == animSwimField) map.swim = selected;
+                        else if (activeModelField == animFlyField) map.fly = selected;
+                        else if (activeModelField == animHoverField) map.hover = selected;
+                        else if (activeModelField == animAttackField) map.attack = selected;
+                        else if (activeModelField == animJumpField) map.jump = selected;
+                    }
+                    showModelSuggestions = false;
+                    return true;
+                }
+            }
+            if (showSoundSuggestions && !activeSuggestions.isEmpty() && activeSoundField != null && activeSoundField.isFocused()) {
+                int idx = Math.min(suggestionsScrollOffset, activeSuggestions.size() - 1);
+                if (idx >= 0 && idx < activeSuggestions.size()) {
+                    String selected = activeSuggestions.get(idx);
+                    activeSoundField.setValue(selected);
+                    showSoundSuggestions = false;
+                    return true;
+                }
+            }
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override

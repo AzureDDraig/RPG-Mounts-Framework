@@ -22,6 +22,7 @@
   "gui.rpg_mounts.creator.title": "RPGマウント作成画面",
   "gui.rpg_mounts.creator.tab.general": "一般",
   "gui.rpg_mounts.creator.tab.model": "モデルとアニメ",
+  "gui.rpg_mounts.creator.tab.animations": "アニメーション",
   "gui.rpg_mounts.creator.tab.stats": "ステータス",
   "gui.rpg_mounts.creator.tab.combat": "戦闘",
   "gui.rpg_mounts.creator.tab.sounds": "音とエフェクト",

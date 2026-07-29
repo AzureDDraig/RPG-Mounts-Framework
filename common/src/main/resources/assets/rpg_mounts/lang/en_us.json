@@ -23,6 +23,7 @@
   "gui.rpg_mounts.creator.title": "RPG Mount Creator UI",
   "gui.rpg_mounts.creator.tab.general": "General",
   "gui.rpg_mounts.creator.tab.model": "Model & Anims",
+  "gui.rpg_mounts.creator.tab.animations": "Animations",
   "gui.rpg_mounts.creator.tab.stats": "Stats",
   "gui.rpg_mounts.creator.tab.combat": "Combat",
   "gui.rpg_mounts.creator.tab.sounds": "Sounds & FX",

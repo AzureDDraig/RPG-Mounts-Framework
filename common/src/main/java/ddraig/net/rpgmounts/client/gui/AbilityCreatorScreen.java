@@ -42,8 +42,31 @@ public class AbilityCreatorScreen extends Screen {
     private int durationTicks = 0;
     private double powerVal = 5.0;
 
+    private boolean showSuggestions = false;
+    private java.util.List<String> activeSuggestions = new java.util.ArrayList<>();
+    private EditBox activeField = null;
+    private int suggestionsScrollOffset = 0;
+
     public AbilityCreatorScreen() {
         super(Component.translatable("gui.rpg_mounts.ability_creator.title"));
+    }
+
+    @Override
+    public void tick() {
+        super.tick();
+        if (nameField != null) nameField.tick();
+        if (soundField != null) soundField.tick();
+        if (particleField != null) particleField.tick();
+        if (animNameField != null) animNameField.tick();
+
+        if (animNameField != null && animNameField.isFocused()) {
+            activeSuggestions = ddraig.net.rpgmounts.data.MountRegistry.getAnimationSuggestions("", animNameField.getValue());
+            showSuggestions = true;
+            activeField = animNameField;
+        } else {
+            showSuggestions = false;
+            activeField = null;
+        }
     }
 
     @Override
@@ -57,9 +80,13 @@ public class AbilityCreatorScreen extends Screen {
         int rightCol = left + 168;
 
         this.nameField = new EditBox(this.font, leftCol, top + 26, 140, 12, Component.literal("Name"));
+        this.nameField.setMaxLength(1024);
         this.soundField = new EditBox(this.font, rightCol, top + 26, 140, 12, Component.literal("Sound"));
+        this.soundField.setMaxLength(1024);
         this.particleField = new EditBox(this.font, rightCol, top + 64, 140, 12, Component.literal("Particle"));
+        this.particleField.setMaxLength(1024);
         this.animNameField = new EditBox(this.font, rightCol, top + 140, 140, 12, Component.literal("Custom Anim Name"));
+        this.animNameField.setMaxLength(1024);
 
         this.addWidget(this.nameField);
         this.addWidget(this.soundField);
@@ -201,6 +228,37 @@ public class AbilityCreatorScreen extends Screen {
         rDrawY += 18;
         animNameField.render(graphics, mouseX, mouseY, partialTicks);
 
+        // Render animation suggestion dropdown overlay with elevated Z-level
+        if (showSuggestions && !activeSuggestions.isEmpty() && activeField != null) {
+            graphics.pose().pushPose();
+            graphics.pose().translate(0, 0, 500.0f);
+
+            int dropX = rightColX;
+            int dropY = y + 154;
+            int dropW = 140;
+            int rowH = 12;
+            int maxVisibleRows = 5;
+            int visibleRows = Math.min(maxVisibleRows, activeSuggestions.size());
+            int dropH = visibleRows * rowH;
+
+            graphics.fill(dropX, dropY, dropX + dropW, dropY + dropH, 0xFF161616);
+            UIHelper.drawOutline(graphics, dropX, dropY, dropW, dropH, 0xFFD4AF37);
+
+            for (int i = 0; i < visibleRows; i++) {
+                int idx = i + suggestionsScrollOffset;
+                if (idx >= activeSuggestions.size()) break;
+                String suggestion = activeSuggestions.get(idx);
+                int itemY = dropY + i * rowH;
+                boolean hover = mouseX >= dropX && mouseX <= dropX + dropW && mouseY >= itemY && mouseY < itemY + rowH;
+                if (hover) {
+                    graphics.fill(dropX + 1, itemY, dropX + dropW - 1, itemY + rowH, 0xFF3D3D1F);
+                }
+                graphics.drawString(this.font, suggestion, dropX + 4, itemY + 2, hover ? 0xFFFFFF55 : 0xFFDDDDDD, false);
+            }
+
+            graphics.pose().popPose();
+        }
+
         // --- SAVE BUTTON ---
         int saveBtnW = 100;
         int saveBtnH = 18;
@@ -247,6 +305,27 @@ public class AbilityCreatorScreen extends Screen {
         int rightColX = x + 168;
         int adjustW = 100;
         int btnH = 14;
+
+        if (showSuggestions && !activeSuggestions.isEmpty() && activeField != null) {
+            int dropX = rightColX;
+            int dropY = y + 154;
+            int dropW = 140;
+            int rowH = 12;
+            int maxVisibleRows = 5;
+            int visibleRows = Math.min(maxVisibleRows, activeSuggestions.size());
+            int dropH = visibleRows * rowH;
+            if (mouseX >= dropX && mouseX <= dropX + dropW && mouseY >= dropY && mouseY <= dropY + dropH) {
+                int clickedRow = (int) ((mouseY - dropY) / rowH);
+                int idx = clickedRow + suggestionsScrollOffset;
+                if (idx < activeSuggestions.size()) {
+                    String selected = activeSuggestions.get(idx);
+                    activeField.setValue(selected);
+                    showSuggestions = false;
+                    Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, 1.0F));
+                    return true;
+                }
+            }
+        }
 
         // Edit box focus clicks
         nameField.mouseClicked(mouseX, mouseY, button);
@@ -441,6 +520,17 @@ public class AbilityCreatorScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_TAB) {
+            if (showSuggestions && !activeSuggestions.isEmpty() && activeField != null && activeField.isFocused()) {
+                int idx = Math.min(suggestionsScrollOffset, activeSuggestions.size() - 1);
+                if (idx >= 0 && idx < activeSuggestions.size()) {
+                    String selected = activeSuggestions.get(idx);
+                    activeField.setValue(selected);
+                    showSuggestions = false;
+                    return true;
+                }
+            }
+        }
         if (this.nameField.keyPressed(keyCode, scanCode, modifiers) ||
             this.soundField.keyPressed(keyCode, scanCode, modifiers) ||
             this.particleField.keyPressed(keyCode, scanCode, modifiers) ||

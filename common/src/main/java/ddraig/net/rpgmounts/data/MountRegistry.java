@@ -410,4 +410,103 @@ public class MountRegistry {
     public static MountData getTemplate(String id) {
         return loadedTemplates.get(id);
     }
+
+    private static final Map<String, java.util.List<String>> animationNamesCache = new ConcurrentHashMap<>();
+
+    public static void clearAnimationCache() {
+        animationNamesCache.clear();
+    }
+
+    public static java.util.List<String> getAnimationNamesForModel(String modelOrTemplateId) {
+        if (modelOrTemplateId == null || modelOrTemplateId.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        
+        String modelId = modelOrTemplateId;
+        MountData template = loadedTemplates.get(modelOrTemplateId);
+        if (template != null && template.modelId != null && !template.modelId.isEmpty()) {
+            modelId = template.modelId;
+        }
+        
+        if (animationNamesCache.containsKey(modelId)) {
+            return animationNamesCache.get(modelId);
+        }
+
+        java.util.List<String> anims = new java.util.ArrayList<>();
+        File configFolder = getMountsFolder();
+        File unpackedFolder = new File(configFolder, modelId);
+        if (unpackedFolder.exists() && unpackedFolder.isDirectory()) {
+            File[] files = unpackedFolder.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    if (f.isFile() && f.getName().toLowerCase().endsWith(".animation.json")) {
+                        try (FileReader reader = new FileReader(f)) {
+                            com.google.gson.JsonObject json = com.google.gson.JsonParser.parseReader(reader).getAsJsonObject();
+                            if (json.has("animations") && json.get("animations").isJsonObject()) {
+                                com.google.gson.JsonObject animationsObj = json.getAsJsonObject("animations");
+                                for (String animName : animationsObj.keySet()) {
+                                    if (!anims.contains(animName)) {
+                                        anims.add(animName);
+                                    }
+                                }
+                            }
+                        } catch (Exception e) {
+                            RPGMounts.LOGGER.warn("Failed to parse animation file: " + f.getName(), e);
+                        }
+                    }
+                }
+            }
+        }
+        
+        java.util.Collections.sort(anims);
+        animationNamesCache.put(modelId, anims);
+        return anims;
+    }
+
+    public static java.util.List<String> getAnimationSuggestions(String modelOrTemplateId, String query) {
+        java.util.List<String> allAnims = getAnimationNamesForModel(modelOrTemplateId);
+        if (allAnims.isEmpty()) return allAnims;
+        if (query == null || query.trim().isEmpty()) {
+            return allAnims;
+        }
+
+        String queryLower = query.trim().toLowerCase();
+        java.util.List<String> result = new java.util.ArrayList<>();
+
+        // Priority 1: Prefix match
+        for (String anim : allAnims) {
+            if (anim.toLowerCase().startsWith(queryLower)) {
+                result.add(anim);
+            }
+        }
+
+        // Priority 2: Substring match
+        for (String anim : allAnims) {
+            if (!result.contains(anim) && anim.toLowerCase().contains(queryLower)) {
+                result.add(anim);
+            }
+        }
+
+        // Priority 3: Initials match
+        for (String anim : allAnims) {
+            if (!result.contains(anim) && matchesInitials(queryLower, anim)) {
+                result.add(anim);
+            }
+        }
+
+        return result;
+    }
+
+    private static boolean matchesInitials(String typed, String name) {
+        if (typed == null || typed.isEmpty()) return false;
+        String[] words = name.toLowerCase().split("[\\s_\\-.:]+");
+        if (words.length < typed.length()) return false;
+        for (int i = 0; i < typed.length(); i++) {
+            char c = typed.charAt(i);
+            if (words[i].isEmpty() || words[i].charAt(0) != c) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

@@ -49,22 +49,22 @@ public class MountCommands {
     public static SuggestionProvider<CommandSourceStack> EDITABLE_PROPERTIES_SUGGESTER;
     public static SuggestionProvider<CommandSourceStack> PROPERTY_VALUES_SUGGESTER;
     public static SuggestionProvider<CommandSourceStack> PACKED_TEMPLATES_SUGGESTER;
+    public static SuggestionProvider<CommandSourceStack> ANIMATION_SUGGESTER;
 
     @SuppressWarnings("unchecked")
     public static void init() {
         OWNED_MOUNTS_SUGGESTER = (SuggestionProvider<CommandSourceStack>) (SuggestionProvider<?>) SuggestionProviders.register(
                 new ResourceLocation(RPGMounts.MOD_ID, "owned_mounts"),
                 (context, builder) -> {
-                    if (context.getSource() instanceof CommandSourceStack css) {
-                        try {
-                            ServerPlayer player = css.getPlayerOrException();
-                            Map<String, DatabaseManager.UnlockedMountData> owned = DatabaseManager.unlockedMountsCache.get(player.getUUID());
-                            if (owned != null) {
-                                owned.keySet().forEach(builder::suggest);
-                            }
-                        } catch (Exception e) {
-                            // Ignore
-                        }
+                    String remaining = builder.getRemaining();
+                    java.util.Set<DatabaseManager.UnlockedMountData> allOwned = new java.util.HashSet<>();
+                    for (Map<String, DatabaseManager.UnlockedMountData> map : DatabaseManager.unlockedMountsCache.values()) {
+                        allOwned.addAll(map.values());
+                    }
+                    if (!allOwned.isEmpty()) {
+                        suggestOwnedMounts(remaining, builder, allOwned);
+                    } else {
+                        suggestTemplates(remaining, builder, MountRegistry.loadedTemplates.values());
                     }
                     return builder.buildFuture();
                 }
@@ -73,20 +73,15 @@ public class MountCommands {
         TARGET_OWNED_MOUNTS_SUGGESTER = (SuggestionProvider<CommandSourceStack>) (SuggestionProvider<?>) SuggestionProviders.register(
                 new ResourceLocation(RPGMounts.MOD_ID, "target_owned_mounts"),
                 (context, builder) -> {
-                    if (context.getSource() instanceof CommandSourceStack css) {
-                        try {
-                            @SuppressWarnings("unchecked")
-                            com.mojang.brigadier.context.CommandContext<CommandSourceStack> castedContext = 
-                                    (com.mojang.brigadier.context.CommandContext<CommandSourceStack>) (com.mojang.brigadier.context.CommandContext<?>) context;
-                            ServerPlayer target = EntityArgument.getPlayer(castedContext, "player");
-                            Map<String, DatabaseManager.UnlockedMountData> owned = DatabaseManager.unlockedMountsCache.get(target.getUUID());
-                            if (owned != null) {
-                                owned.keySet().forEach(builder::suggest);
-                            }
-                        } catch (Exception e) {
-                            // Fallback to all loaded templates if target player argument isn't parsed yet
-                            MountRegistry.loadedTemplates.keySet().forEach(builder::suggest);
-                        }
+                    String remaining = builder.getRemaining();
+                    java.util.Set<DatabaseManager.UnlockedMountData> allOwned = new java.util.HashSet<>();
+                    for (Map<String, DatabaseManager.UnlockedMountData> map : DatabaseManager.unlockedMountsCache.values()) {
+                        allOwned.addAll(map.values());
+                    }
+                    if (!allOwned.isEmpty()) {
+                        suggestOwnedMounts(remaining, builder, allOwned);
+                    } else {
+                        suggestTemplates(remaining, builder, MountRegistry.loadedTemplates.values());
                     }
                     return builder.buildFuture();
                 }
@@ -95,10 +90,27 @@ public class MountCommands {
         LOADED_TEMPLATES_SUGGESTER = (SuggestionProvider<CommandSourceStack>) (SuggestionProvider<?>) SuggestionProviders.register(
                 new ResourceLocation(RPGMounts.MOD_ID, "loaded_templates"),
                 (context, builder) -> {
-                    for (MountData data : MountRegistry.loadedTemplates.values()) {
-                        builder.suggest(data.id);
-                        if (data.name != null && !data.name.isEmpty()) {
-                            builder.suggest(data.name);
+                    suggestTemplates(builder.getRemaining(), builder, MountRegistry.loadedTemplates.values());
+                    return builder.buildFuture();
+                }
+        );
+
+        ANIMATION_SUGGESTER = (SuggestionProvider<CommandSourceStack>) (SuggestionProvider<?>) SuggestionProviders.register(
+                new ResourceLocation(RPGMounts.MOD_ID, "mount_animations"),
+                (context, builder) -> {
+                    String remaining = builder.getRemaining();
+                    try {
+                        String templateId = StringArgumentType.getString(context, "template_id");
+                        java.util.List<String> anims = MountRegistry.getAnimationSuggestions(templateId, remaining);
+                        for (String anim : anims) {
+                            builder.suggest(anim);
+                        }
+                    } catch (Exception e) {
+                        for (MountData data : MountRegistry.loadedTemplates.values()) {
+                            java.util.List<String> anims = MountRegistry.getAnimationSuggestions(data.id, remaining);
+                            for (String anim : anims) {
+                                builder.suggest(anim);
+                            }
                         }
                     }
                     return builder.buildFuture();
@@ -289,37 +301,69 @@ public class MountCommands {
                         )
                         // /rpg_mounts admin remove-mount <player> <instance_id>
                         .then(Commands.literal("remove-mount")
-                                .then(Commands.argument("player", EntityArgument.player())
-                                        .then(Commands.argument("instance_id", StringArgumentType.greedyString())
+                                .then(Commands.argument("player", net.minecraft.commands.arguments.GameProfileArgument.gameProfile())
+                                        .then(Commands.argument("instance_id", StringArgumentType.string())
                                                 .suggests(TARGET_OWNED_MOUNTS_SUGGESTER)
                                                 .executes(context -> {
-                                                    ServerPlayer target = EntityArgument.getPlayer(context, "player");
-                                                    String instanceId = StringArgumentType.getString(context, "instance_id");
-                                                    
-                                                    // Despawn active mount entity in world if matching instanceId
-                                                    if (target.server != null) {
-                                                        for (ServerLevel level : target.server.getAllLevels()) {
+                                                    java.util.Collection<com.mojang.authlib.GameProfile> profiles = 
+                                                            net.minecraft.commands.arguments.GameProfileArgument.getGameProfiles(context, "player");
+                                                    if (profiles.isEmpty()) {
+                                                        context.getSource().sendFailure(Component.literal("§cPlayer profile not found."));
+                                                        return 0;
+                                                    }
+                                                    com.mojang.authlib.GameProfile targetProfile = profiles.iterator().next();
+                                                    UUID targetUuid = targetProfile.getId();
+                                                    String targetName = targetProfile.getName();
+
+                                                    String rawInstanceId = StringArgumentType.getString(context, "instance_id");
+                                                    if (rawInstanceId.startsWith("\"") && rawInstanceId.endsWith("\"") && rawInstanceId.length() > 1) {
+                                                        rawInstanceId = rawInstanceId.substring(1, rawInstanceId.length() - 1);
+                                                    }
+
+                                                    final String queryStr = rawInstanceId;
+
+                                                    // Despawn active mount entity in world if target player is currently online
+                                                    ServerPlayer onlinePlayer = context.getSource().getServer().getPlayerList().getPlayer(targetUuid);
+                                                    if (onlinePlayer != null && onlinePlayer.server != null) {
+                                                        for (ServerLevel level : onlinePlayer.server.getAllLevels()) {
                                                             for (Entity entity : level.getAllEntities()) {
                                                                 if (entity instanceof RPGMountEntity mount) {
-                                                                    if (target.getUUID().equals(mount.getOwnerUuid()) && instanceId.equals(mount.getInstanceId())) {
-                                                                        mount.discard();
+                                                                    if (targetUuid.equals(mount.getOwnerUuid())) {
+                                                                        String mInst = mount.getInstanceId();
+                                                                        String mId = mount.getTemplateId();
+                                                                        if ((mInst != null && queryStr.toLowerCase().contains(mInst.toLowerCase())) ||
+                                                                            (mId != null && queryStr.toLowerCase().contains(mId.toLowerCase())) ||
+                                                                            queryStr.equalsIgnoreCase(mInst) || queryStr.equalsIgnoreCase(mId)) {
+                                                                            mount.ejectPassengers();
+                                                                            mount.discard();
+                                                                        }
                                                                     }
                                                                 }
                                                             }
                                                         }
                                                     }
-                                                    
+
                                                     // Clear active mount record if it matches
-                                                    DatabaseManager.ActiveMountData active = DatabaseManager.activeMountsCache.get(target.getUUID());
-                                                    if (active != null && instanceId.equals(active.activeMountUuid)) {
-                                                        DatabaseManager.saveActiveMountAsync(target.getUUID(), null);
+                                                    DatabaseManager.ActiveMountData active = DatabaseManager.activeMountsCache.get(targetUuid);
+                                                    if (active != null && active.activeMountUuid != null) {
+                                                        if (queryStr.toLowerCase().contains(active.activeMountUuid.toLowerCase()) ||
+                                                            queryStr.equalsIgnoreCase(active.activeMountUuid)) {
+                                                            DatabaseManager.saveActiveMountAsync(targetUuid, null);
+                                                        }
                                                     }
-                                                    
-                                                    DatabaseManager.removeUnlockedMountAsync(target.getUUID(), instanceId);
-                                                    ModPackets.syncUnlockedMounts(target);
-                                                    String adminName = context.getSource().getTextName();
-                                                    ddraig.net.rpgmounts.integration.RPGWaypointsServerIntegration.logAudit(adminName, "REMOVE_MOUNT " + instanceId + " from player " + target.getName().getString(), instanceId);
-                                                    context.getSource().sendSuccess(() -> Component.literal("Removed mount instance " + instanceId + " from player " + target.getName().getString()), true);
+
+                                                    DatabaseManager.removeMatchingUnlockedMountsAsync(targetUuid, queryStr).thenAccept(removedIds -> {
+                                                        if (onlinePlayer != null) {
+                                                            ModPackets.syncUnlockedMounts(onlinePlayer);
+                                                        }
+                                                        int count = removedIds.size();
+                                                        String adminName = context.getSource().getTextName();
+                                                        ddraig.net.rpgmounts.integration.RPGWaypointsServerIntegration.logAudit(
+                                                            adminName, "REMOVE_MOUNT " + queryStr + " (Removed " + count + " instances) from player " + targetName, queryStr);
+                                                        
+                                                        context.getSource().sendSuccess(() -> Component.literal("§aRemoved " + count + " mount instance(s) matching '" + queryStr + "' from player " + targetName + "."), true);
+                                                    });
+
                                                     return 1;
                                                 })
                                         )
@@ -822,6 +866,17 @@ public class MountCommands {
 
     private static String resolveTemplateId(String input) {
         if (input == null) return null;
+
+        // Handle search completion format like: "typed (template_id)" or "typed -> template_id"
+        if (input.contains(" (") && input.endsWith(")")) {
+            int openParen = input.lastIndexOf(" (");
+            String extracted = input.substring(openParen + 2, input.length() - 1);
+            if (MountRegistry.loadedTemplates.containsKey(extracted)) {
+                return extracted;
+            }
+            input = extracted;
+        }
+
         if (MountRegistry.loadedTemplates.containsKey(input)) {
             return input;
         }
@@ -831,5 +886,100 @@ public class MountCommands {
             }
         }
         return input;
+    }
+
+    private static final java.util.regex.Pattern UUID_PATTERN = 
+        java.util.regex.Pattern.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+        
+    private static String extractInstanceId(String input) {
+        if (input == null) return null;
+        java.util.regex.Matcher matcher = UUID_PATTERN.matcher(input);
+        if (matcher.find()) {
+            return matcher.group();
+        }
+        return input;
+    }
+
+    private static boolean matchesInitials(String typed, String name) {
+        if (typed == null || typed.isEmpty()) return false;
+        String[] words = name.toLowerCase().split("[\\s_\\-:]+");
+        if (words.length < typed.length()) return false;
+        for (int i = 0; i < typed.length(); i++) {
+            char c = typed.charAt(i);
+            if (words[i].isEmpty() || words[i].charAt(0) != c) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static void suggestTemplates(String typed, com.mojang.brigadier.suggestion.SuggestionsBuilder builder, java.util.Collection<MountData> templates) {
+        String typedLower = typed.toLowerCase();
+        java.util.Set<String> suggested = new java.util.HashSet<>();
+        for (MountData data : templates) {
+            String id = data.id;
+            String idLower = id.toLowerCase();
+            String name = data.name != null ? data.name : "";
+            String nameLower = name.toLowerCase();
+
+            if (idLower.startsWith(typedLower)) {
+                if (suggested.add(id)) builder.suggest(id);
+            } else if (!name.isEmpty() && nameLower.startsWith(typedLower)) {
+                if (suggested.add(name)) builder.suggest(name);
+            } else if (idLower.contains(typedLower)) {
+                String s = typed + " (" + id + ")";
+                if (suggested.add(s)) builder.suggest(s);
+            } else if (!name.isEmpty() && nameLower.contains(typedLower)) {
+                String s = typed + " (" + id + ")";
+                if (suggested.add(s)) builder.suggest(s);
+            } else if (matchesInitials(typedLower, idLower) || (!name.isEmpty() && matchesInitials(typedLower, nameLower))) {
+                String s = typed + " (" + id + ")";
+                if (suggested.add(s)) builder.suggest(s);
+            }
+        }
+    }
+
+    private static void suggestOwnedMounts(String typed, com.mojang.brigadier.suggestion.SuggestionsBuilder builder, java.util.Collection<DatabaseManager.UnlockedMountData> owned) {
+        String query = typed.startsWith("\"") ? typed.substring(1) : typed;
+        String typedLower = query.toLowerCase();
+        java.util.Set<String> suggested = new java.util.HashSet<>();
+        for (DatabaseManager.UnlockedMountData data : owned) {
+            String instanceId = data.instanceId;
+            MountData template = MountRegistry.getTemplate(data.mountId);
+            String templateName = (template != null && template.name != null) ? template.name : data.mountId;
+            String customName = data.customName != null ? data.customName : "";
+            
+            // 1. Suggest raw template mountId
+            if (data.mountId.toLowerCase().contains(typedLower) || matchesInitials(typedLower, data.mountId.toLowerCase())) {
+                if (suggested.add(data.mountId)) builder.suggest(data.mountId);
+            }
+            
+            // 2. Suggest raw instanceId UUID
+            if (instanceId.toLowerCase().contains(typedLower)) {
+                if (suggested.add(instanceId)) builder.suggest(instanceId);
+            }
+
+            // 3. Formatted display string
+            String suggestionText = !customName.isEmpty() ? 
+                customName + " (" + templateName + ")" : 
+                templateName;
+            
+            String suggestionTextLower = suggestionText.toLowerCase();
+            String customNameLower = customName.toLowerCase();
+            String templateNameLower = templateName.toLowerCase();
+
+            if (suggestionTextLower.contains(typedLower) || 
+                (!customName.isEmpty() && customNameLower.contains(typedLower)) ||
+                templateNameLower.contains(typedLower) ||
+                matchesInitials(typedLower, templateNameLower) ||
+                (!customName.isEmpty() && matchesInitials(typedLower, customNameLower))) {
+                
+                String formatted = suggestionText.contains(" ") ? "\"" + suggestionText + "\"" : suggestionText;
+                if (suggested.add(formatted)) builder.suggest(formatted);
+            }
+        }
+        
+        // Baseline fallback to loaded template IDs
+        suggestTemplates(typed, builder, MountRegistry.loadedTemplates.values());
     }
 }
