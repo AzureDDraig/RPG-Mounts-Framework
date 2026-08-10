@@ -82,36 +82,47 @@ public class RPGWaypointsIntegration {
 
     private static class RPGWaypointsRegistrationHelper {
         public static void registerTabs() {
-            com.rpgwaypoints.compass.api.RPGWaypointsAPI.registerCustomTab(new com.rpgwaypoints.compass.api.RPGWaypointsAPI.CustomTab(
-                    net.minecraft.network.chat.Component.literal("Mounts"),
-                    new MountsPanelComponent(),
-                    () -> true
-            ));
+            try {
+                Class<?> apiClass = Class.forName("com.rpgwaypoints.compass.api.RPGWaypointsAPI");
+                Class<?> customTabClass = Class.forName("com.rpgwaypoints.compass.api.RPGWaypointsAPI$CustomTab");
+                Class<?> panelComponentClass = Class.forName("com.rpgwaypoints.compass.api.RPGWaypointsAPI$IRightPanelComponent");
+                java.lang.reflect.Constructor<?> ctor = customTabClass.getConstructor(Component.class, panelComponentClass, java.util.function.Supplier.class);
+                java.lang.reflect.Method regMethod = apiClass.getMethod("registerCustomTab", customTabClass);
 
-            com.rpgwaypoints.compass.api.RPGWaypointsAPI.registerCustomTab(new com.rpgwaypoints.compass.api.RPGWaypointsAPI.CustomTab(
-                    net.minecraft.network.chat.Component.literal("Mount Settings"),
-                    new MountSettingsPanelComponent(),
-                    () -> Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasPermissions(2) && adminMode
-            ));
+                regMethod.invoke(null, ctor.newInstance(
+                        Component.literal("Mounts"),
+                        new MountsPanelComponent(),
+                        (java.util.function.Supplier<Boolean>) () -> true
+                ));
 
-            com.rpgwaypoints.compass.api.RPGWaypointsAPI.registerCustomTab(new com.rpgwaypoints.compass.api.RPGWaypointsAPI.CustomTab(
-                    net.minecraft.network.chat.Component.literal("Enhancer Creator"),
-                    new EnhancerCreatorPanelComponent(),
-                    () -> Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasPermissions(2) && adminMode
-            ));
+                regMethod.invoke(null, ctor.newInstance(
+                        Component.literal("Mount Settings"),
+                        new MountSettingsPanelComponent(),
+                        (java.util.function.Supplier<Boolean>) () -> Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasPermissions(2) && adminMode
+                ));
 
-            com.rpgwaypoints.compass.api.RPGWaypointsAPI.registerCustomTab(new com.rpgwaypoints.compass.api.RPGWaypointsAPI.CustomTab(
-                    net.minecraft.network.chat.Component.translatable("gui.rpg_mounts.ability_creator.title"),
-                    new AbilityCreatorPanelComponent(),
-                    () -> Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasPermissions(2) && adminMode
-            ));
+                regMethod.invoke(null, ctor.newInstance(
+                        Component.literal("Enhancer Creator"),
+                        new EnhancerCreatorPanelComponent(),
+                        (java.util.function.Supplier<Boolean>) () -> Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasPermissions(2) && adminMode
+                ));
 
-            com.rpgwaypoints.compass.api.RPGWaypointsAPI.registerCustomTab(new com.rpgwaypoints.compass.api.RPGWaypointsAPI.CustomTab(
-                    net.minecraft.network.chat.Component.literal("Audit Logs"),
-                    new AuditLogsPanelComponent(),
-                    () -> Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasPermissions(2) && adminMode
-            ));
+                regMethod.invoke(null, ctor.newInstance(
+                        Component.translatable("gui.rpg_mounts.ability_creator.title"),
+                        new AbilityCreatorPanelComponent(),
+                        (java.util.function.Supplier<Boolean>) () -> Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasPermissions(2) && adminMode
+                ));
+
+                regMethod.invoke(null, ctor.newInstance(
+                        Component.literal("Audit Logs"),
+                        new AuditLogsPanelComponent(),
+                        (java.util.function.Supplier<Boolean>) () -> Minecraft.getInstance().player != null && Minecraft.getInstance().player.hasPermissions(2) && adminMode
+                ));
+            } catch (Throwable e) {
+                RPGMounts.LOGGER.error("Failed to register RPG Waypoints custom tabs", e);
+            }
         }
+    }
 
         private static class MountsPanelComponent implements com.rpgwaypoints.compass.api.RPGWaypointsAPI.IRightPanelComponent {
             private MountHUDScreen hudScreenDelegate = null;
@@ -354,4 +365,3 @@ public class RPGWaypointsIntegration {
             }
         }
     }
-}

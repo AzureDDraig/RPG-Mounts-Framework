@@ -2082,10 +2082,15 @@ public class MountCreatorScreen extends Screen {
         int addY = listY + listH + 4;
         if (mouseX >= listX && mouseX <= listX + 42 && mouseY >= addY && mouseY <= addY + 14) {
             saveTextFieldsToActiveTemplate(); // Save current before switching!
-            String newId = "new_mount_" + (templatesList.size() + 1);
+            int counter = 1;
+            String newId = "new_mount_" + counter;
+            while (MountRegistry.loadedTemplates.containsKey(newId) || hasMountFolderOnDisk(newId)) {
+                counter++;
+                newId = "new_mount_" + counter;
+            }
             MountData m = new MountData();
             m.id = newId;
-            m.name = "Custom Mount";
+            m.name = "Custom Mount " + counter;
             m.category = "GROUND";
             m.modelType = "vanilla";
             m.modelId = "minecraft:wolf";
@@ -2697,6 +2702,16 @@ public class MountCreatorScreen extends Screen {
         }
 
         return super.mouseScrolled(mouseX, mouseY, amount);
+    }
+
+    private boolean hasMountFolderOnDisk(String id) {
+        try {
+            java.io.File baseDir = new java.io.File(dev.architectury.platform.Platform.getConfigFolder().toFile(), "RPG Mounts");
+            java.io.File folder = new java.io.File(baseDir, "Mounts/Unpacked/" + id.toLowerCase(java.util.Locale.ROOT));
+            return folder.exists();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private List<String> getModelSuggestions(String query) {

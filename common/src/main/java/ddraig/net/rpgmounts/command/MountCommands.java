@@ -577,6 +577,10 @@ public class MountCommands {
                                             java.io.File file = new java.io.File(folder, "mount.json");
                                             try (java.io.FileWriter writer = new java.io.FileWriter(file)) {
                                                 new com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(data, writer);
+                                                if (!ddraig.net.rpgmounts.config.ModConfig.get().general.loaded_mounts.contains(mountId)) {
+                                                    ddraig.net.rpgmounts.config.ModConfig.get().general.loaded_mounts.add(mountId);
+                                                    ddraig.net.rpgmounts.config.ModConfig.get().save();
+                                                }
                                                 MountRegistry.loadedTemplates.put(mountId, data);
                                                 String adminName = context.getSource().getTextName();
                                                 ddraig.net.rpgmounts.integration.RPGWaypointsServerIntegration.logAudit(adminName, "CREATE_MOUNT " + mountId, mountId);

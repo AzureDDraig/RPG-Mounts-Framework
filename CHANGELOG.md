@@ -4,6 +4,14 @@ This document tracks all builds and changes implemented.
 
 ---
 
+### [Build 128 - 26-221-21-00] (Compilation Successful)
+- **25th Mount Template Deletion & Overwrite Bugfix**:
+  - **Template ID Collision Prevention (`MountCreatorScreen.java`)**: Replaced unsafe `new_mount_ + (templatesList.size() + 1)` calculation in "Add Mount" with a collision check loop (`while (MountRegistry.loadedTemplates.containsKey(newId) || hasMountFolderOnDisk(newId))`) to guarantee creating new mounts never collides with or overwrites mount 25 or any existing template.
+  - **Auto-Register Unpacked Mount Folders (`MountRegistry.java`)**: Updated `reloadTemplates()` to automatically add any valid unpacked `mount.json` directory in `Mounts/Unpacked/` to `loaded_mounts` in `server_config.json` so no template folder on disk is ever orphaned or skipped.
+  - **Command Creation Sync (`MountCommands.java`)**: Ensured `/rpg_mounts admin create-mount <mount_id>` registers created mount IDs in `loaded_mounts`.
+
+---
+
 ### [Build 127 - 26-209-11-25] (Compilation Successful)
 - **GitHub Issue #12 Fixes & Feature Additions**:
   - **Mount Creator UI Mount List Scrollbar & Mouse Wheel Scrolling (`MountCreatorScreen.java`)**: Added vertical scrollbar, scissor clipping box (`RenderSystem.enableScissor`), and mouse wheel scrolling to the sidebar template list.

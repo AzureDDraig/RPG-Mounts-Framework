@@ -202,9 +202,11 @@ public class MountRegistry {
                         try (FileReader reader = new FileReader(mountJson)) {
                             MountData data = GSON.fromJson(reader, MountData.class);
                             if (data != null && !data.id.isEmpty()) {
-                                if (ModConfig.get().general.loaded_mounts.contains(data.id)) {
-                                    loadedTemplates.put(data.id, data);
+                                if (!ModConfig.get().general.loaded_mounts.contains(data.id)) {
+                                    ModConfig.get().general.loaded_mounts.add(data.id);
+                                    ModConfig.get().save();
                                 }
+                                loadedTemplates.put(data.id, data);
                             }
                         } catch (IOException e) {
                             RPGMounts.LOGGER.error("Failed to parse mount config at " + mountJson.getAbsolutePath(), e);
