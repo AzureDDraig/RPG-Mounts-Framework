@@ -84,6 +84,7 @@
   "gui.rpg_mounts.ancestry.evolved_to": "  to %s (Lvl %d)",
   "gui.rpg_mounts.ancestry.action": "• Action: %s",
   "config.rpgmounts.tooltip.use_whitelist": "If enabled, restricts mount summoning only to dimensions in the whitelist. Otherwise, blacklisted dimensions are blocked.",
+  "config.rpgmounts.tooltip.prevent_duplicate_mounts": "If enabled, prevents players from unlocking or receiving duplicate instances of mount templates they already own.",
   "config.rpgmounts.tooltip.stamina_system": "If enabled, mount actions (like sprinting, flying, jumping) will consume stamina, requiring periodic recovery.",
   "config.rpgmounts.tooltip.combat_abilities": "If enabled, mounts can execute active combat abilities if they have any mapped.",
   "config.rpgmounts.tooltip.rider_reach_mixin": "If enabled, extends the player's interaction and attack reach while riding a mount.",

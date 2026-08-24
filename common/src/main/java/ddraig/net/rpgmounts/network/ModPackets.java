@@ -110,6 +110,31 @@ public class ModPackets {
                     mount.setPos(player.getX(), player.getY(), player.getZ());
                     player.level().addFreshEntity(mount);
                     player.startRiding(mount);
+
+                    if (player.level() instanceof ServerLevel serverLevel) {
+                        // Play spawn sound
+                        String soundId = (data.spawnEffects != null && data.spawnEffects.sound != null && !data.spawnEffects.sound.isEmpty())
+                                ? data.spawnEffects.sound : (data.sounds != null && data.sounds.ambient != null ? data.sounds.ambient : "");
+                        if (!soundId.isEmpty()) {
+                            try {
+                                net.minecraft.resources.ResourceLocation sLoc = new net.minecraft.resources.ResourceLocation(soundId);
+                                serverLevel.playSound(null, player.getX(), player.getY(), player.getZ(),
+                                        net.minecraft.sounds.SoundEvent.createVariableRangeEvent(sLoc),
+                                        net.minecraft.sounds.SoundSource.NEUTRAL, 1.0F, 1.0F);
+                            } catch (Exception ignored) {}
+                        }
+
+                        // Play spawn particles
+                        String partId = (data.spawnEffects != null && data.spawnEffects.particle != null && !data.spawnEffects.particle.isEmpty())
+                                ? data.spawnEffects.particle : (data.groundParticle != null && !data.groundParticle.isEmpty() ? data.groundParticle : "minecraft:poof");
+                        try {
+                            net.minecraft.core.particles.ParticleOptions part = (net.minecraft.core.particles.ParticleOptions) 
+                                    net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.get(new net.minecraft.resources.ResourceLocation(partId));
+                            if (part != null) {
+                                serverLevel.sendParticles(part, player.getX(), player.getY() + 0.5, player.getZ(), 20, 0.5, 0.5, 0.5, 0.05);
+                            }
+                        } catch (Exception ignored) {}
+                    }
                 }
             });
         });

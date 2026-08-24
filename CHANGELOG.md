@@ -4,7 +4,18 @@ This document tracks all builds and changes implemented.
 
 ---
 
-### [Build 128 - 26-221-21-00] (Compilation Successful)
+### [Build 130 - 26-236-08-54] (Compilation Successful)
+- **GitHub Issue #13 Fixes & Feature Additions ([#13](https://github.com/AzureDDraig/RPG-Mounts-Framework/issues/13))**:
+  - **Animation Fields Click & Edit Fix (`MountCreatorScreen.java`)**: Fixed visibility, active state, and editability for Walk, Run, Idle, Swim, Fly, Hover, Attack, and Jump text fields in the Animations tab.
+  - **Sound & Suggestion Overlay Click Fix (`MountCreatorScreen.java`)**: Resolved suggestion dropdown box blocking mouse clicks to underlying sound fields (`soundHurtField`, `soundDeathField`, `spawnSoundField`).
+  - **Mount Preview Zoom Persistence (`MountCreatorScreen.java`, `MountData.java`)**: Adjusting viewport zoom (`+` / `-`) in the Mount Creator now saves directly into `previewZoom` in `mount.json`, allowing creators to configure custom default zoom levels for the Mount Manager HUD.
+  - **Synchronized Multiplayer Mount Particles (`RPGMountEntity.java`)**: Updated particle trail calculations using position delta differences (`xo`, `zo`) so all players on multiplayer servers can view the riding player's ground, aquatic, and flight mount particle trails.
+  - **Synchronized Mount Summon Effects (`ModPackets.java`)**: Summoning a mount now broadcasts `spawnEffects.sound` and `spawnEffects.particle` server-wide (`sendParticles` / `playSound`) so all nearby players hear and see the summoning sequence.
+  - **Prevent Duplicate Mounts Config (`ModConfig.java`, `MountCommands.java`, `ConfigEditorScreen.java`)**: Added `prevent_duplicate_mounts` option to `server_config.json` and in-game config GUI to prevent players from receiving duplicate mounts of the same type.
+
+---
+
+### [Build 128/129 - 26-221-21-00] (Compilation Successful)
 - **25th Mount Template Deletion & Overwrite Bugfix**:
   - **Template ID Collision Prevention (`MountCreatorScreen.java`)**: Replaced unsafe `new_mount_ + (templatesList.size() + 1)` calculation in "Add Mount" with a collision check loop (`while (MountRegistry.loadedTemplates.containsKey(newId) || hasMountFolderOnDisk(newId))`) to guarantee creating new mounts never collides with or overwrites mount 25 or any existing template.
   - **Auto-Register Unpacked Mount Folders (`MountRegistry.java`)**: Updated `reloadTemplates()` to automatically add any valid unpacked `mount.json` directory in `Mounts/Unpacked/` to `loaded_mounts` in `server_config.json` so no template folder on disk is ever orphaned or skipped.

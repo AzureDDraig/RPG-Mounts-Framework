@@ -174,6 +174,9 @@ public class MountCreatorScreen extends Screen {
         if (selectedTemplate == null && !templatesList.isEmpty()) {
             selectedTemplate = templatesList.get(0);
         }
+        if (selectedTemplate != null) {
+            previewZoom = (selectedTemplate.previewZoom > 0.05f) ? selectedTemplate.previewZoom : 1.0f;
+        }
 
         this.panelW = Math.max(440, Math.min(540, (int)(this.width * 0.85)));
         this.panelH = Math.max(280, Math.min(340, (int)(this.height * 0.85)));
@@ -350,6 +353,7 @@ public class MountCreatorScreen extends Screen {
 
         flightParticleField.setValue(selectedTemplate.flightParticle != null ? selectedTemplate.flightParticle : "minecraft:cloud");
         groundParticleField.setValue(selectedTemplate.groundParticle != null ? selectedTemplate.groundParticle : "minecraft:crit");
+        previewZoom = (selectedTemplate.previewZoom > 0.05f) ? selectedTemplate.previewZoom : 1.0f;
     }
 
     private void updateWidgetsVisibility() {
@@ -2048,11 +2052,13 @@ public class MountCreatorScreen extends Screen {
             if (button == 0) {
                 if (mouseX >= btnMinusX && mouseX < btnMinusX + 12 && mouseY >= btnY && mouseY < btnY + 12) {
                     previewZoom = Math.max(0.2f, previewZoom - 0.1f);
+                    if (selectedTemplate != null) selectedTemplate.previewZoom = previewZoom;
                     Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, 1.0F));
                     return true;
                 }
                 if (mouseX >= btnPlusX && mouseX < btnPlusX + 12 && mouseY >= btnY && mouseY < btnY + 12) {
                     previewZoom = Math.min(4.0f, previewZoom + 0.1f);
+                    if (selectedTemplate != null) selectedTemplate.previewZoom = previewZoom;
                     Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, 1.0F));
                     return true;
                 }
@@ -2070,7 +2076,7 @@ public class MountCreatorScreen extends Screen {
             if (clickedIdx >= 0 && clickedIdx < templatesList.size()) {
                 saveTextFieldsToActiveTemplate(); // Save current before switching!
                 selectedTemplate = templatesList.get(clickedIdx);
-                previewZoom = 1.0f; // Reset zoom on template change
+                previewZoom = (selectedTemplate != null && selectedTemplate.previewZoom > 0.05f) ? selectedTemplate.previewZoom : 1.0f;
                 updateFieldValues();
                 updateWidgetsVisibility();
                 updateDummyRiders();
@@ -2552,6 +2558,7 @@ public class MountCreatorScreen extends Screen {
         if (selectedTemplate.rarity == null) {
             selectedTemplate.rarity = "COMMON";
         }
+        selectedTemplate.previewZoom = previewZoom;
 
         // Combat Active Ability is managed via the custom abilities list selection, not textfields.
 

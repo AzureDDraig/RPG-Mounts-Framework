@@ -47,6 +47,7 @@ public class ModConfig {
         public int culling_distance_blocks = 48;
         public boolean enableSpeedPulsing = true;
         public boolean enableRarity = true;
+        public boolean prevent_duplicate_mounts = false;
         public List<String> loaded_mounts = new ArrayList<>();
     }
 

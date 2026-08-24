@@ -845,8 +845,11 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
                         0.0, 0.0, 0.0);
                 }
 
-                double speedSq = this.getDeltaMovement().horizontalDistanceSqr();
-                boolean isMovingFast = speedSq > 0.02 || this.isSprinting();
+                double posDiffSq = (this.getX() - this.xo) * (this.getX() - this.xo) + (this.getZ() - this.zo) * (this.getZ() - this.zo);
+                double speedSq = Math.max(this.getDeltaMovement().horizontalDistanceSqr(), posDiffSq);
+                boolean isMovingFast = speedSq > 0.008 || this.isSprinting();
+                double vx = Math.abs(this.getDeltaMovement().x) > 0.001 ? this.getDeltaMovement().x : (this.getX() - this.xo);
+                double vz = Math.abs(this.getDeltaMovement().z) > 0.001 ? this.getDeltaMovement().z : (this.getZ() - this.zo);
                 if (isMovingFast) {
                     if (data.category.equalsIgnoreCase("GROUND") && this.onGround()) {
                         String pName = data.groundParticle;
@@ -869,10 +872,10 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
                             
                             this.level().addParticle(part, 
                                 leftX, this.getY() + 0.5 * scale, leftZ, 
-                                -this.getDeltaMovement().x * 0.2, 0.0, -this.getDeltaMovement().z * 0.2);
+                                -vx * 0.2, 0.0, -vz * 0.2);
                             this.level().addParticle(part, 
                                 rightX, this.getY() + 0.5 * scale, rightZ, 
-                                -this.getDeltaMovement().x * 0.2, 0.0, -this.getDeltaMovement().z * 0.2);
+                                -vx * 0.2, 0.0, -vz * 0.2);
                         }
                     } else if ((data.category.equalsIgnoreCase("AQUATIC") || data.category.equalsIgnoreCase("SURFACE_WATER")) && this.isInWater()) {
                         float scale = data.scale;
@@ -884,7 +887,7 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
                         if (part != null) {
                             this.level().addParticle(part, 
                                 backX, this.getY() + 0.5 * scale, backZ, 
-                                -this.getDeltaMovement().x * 0.5, 0.0, -this.getDeltaMovement().z * 0.5);
+                                -vx * 0.5, 0.0, -vz * 0.5);
                         }
                     }
                 }

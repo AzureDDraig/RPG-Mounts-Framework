@@ -111,6 +111,10 @@ public class ConfigEditorScreen extends Screen {
             () -> ModConfig.get().general.culling_distance_blocks, 
             val -> ModConfig.get().general.culling_distance_blocks = ((Number) val).intValue(), 16, 256, 8,
             "config.rpgmounts.tooltip.culling_range_blocks"));
+        optionsList.add(new ConfigOption("Prevent Duplicate Mounts", "boolean",
+            () -> ModConfig.get().general.prevent_duplicate_mounts,
+            val -> ModConfig.get().general.prevent_duplicate_mounts = (boolean) val, 0, 0, 0,
+            "config.rpgmounts.tooltip.prevent_duplicate_mounts"));
 
         // STATS LIMITS SECTION
         optionsList.add(new ConfigOption("=== Health & Speed Bounds ==="));

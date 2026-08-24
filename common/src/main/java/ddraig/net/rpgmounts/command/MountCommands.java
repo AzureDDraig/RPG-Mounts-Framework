@@ -288,6 +288,14 @@ public class MountCommands {
                                                         return 0;
                                                     }
                                                     
+                                                    if (ddraig.net.rpgmounts.config.ModConfig.get().general.prevent_duplicate_mounts) {
+                                                        Map<String, DatabaseManager.UnlockedMountData> owned = DatabaseManager.unlockedMountsCache.get(target.getUUID());
+                                                        if (owned != null && owned.values().stream().anyMatch(d -> d.mountId.equalsIgnoreCase(resolvedId))) {
+                                                            context.getSource().sendFailure(Component.literal("§cPlayer " + target.getName().getString() + " already owns a mount of type '" + resolvedId + "'."));
+                                                            return 0;
+                                                        }
+                                                    }
+                                                    
                                                     String instanceId = UUID.randomUUID().toString();
                                                     DatabaseManager.saveUnlockedMountAsync(target.getUUID(), instanceId, resolvedId, 0);
                                                     ModPackets.syncUnlockedMounts(target);
