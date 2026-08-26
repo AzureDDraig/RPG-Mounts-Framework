@@ -631,28 +631,28 @@ public class MountCreatorScreen extends Screen {
             int yOffset = 0;
             if (animIdleField != null && animIdleField.isFocused() && animIdleField.visible) {
                 focused = animIdleField;
-                yOffset = 32 + 12;
+                yOffset = 34 + 14;
             } else if (animWalkField != null && animWalkField.isFocused() && animWalkField.visible) {
                 focused = animWalkField;
-                yOffset = 52 + 12;
+                yOffset = 54 + 14;
             } else if (animRunField != null && animRunField.isFocused() && animRunField.visible) {
                 focused = animRunField;
-                yOffset = 72 + 12;
+                yOffset = 74 + 14;
             } else if (animSwimField != null && animSwimField.isFocused() && animSwimField.visible) {
                 focused = animSwimField;
-                yOffset = 92 + 12;
+                yOffset = 94 + 14;
             } else if (animFlyField != null && animFlyField.isFocused() && animFlyField.visible) {
                 focused = animFlyField;
-                yOffset = 112 + 12;
+                yOffset = 114 + 14;
             } else if (animHoverField != null && animHoverField.isFocused() && animHoverField.visible) {
                 focused = animHoverField;
-                yOffset = 132 + 12;
+                yOffset = 134 + 14;
             } else if (animAttackField != null && animAttackField.isFocused() && animAttackField.visible) {
                 focused = animAttackField;
-                yOffset = 152 + 12;
+                yOffset = 154 + 14;
             } else if (animJumpField != null && animJumpField.isFocused() && animJumpField.visible) {
                 focused = animJumpField;
-                yOffset = 172 + 12;
+                yOffset = 174 + 14;
             }
 
             if (focused != null) {
@@ -1893,7 +1893,9 @@ public class MountCreatorScreen extends Screen {
         if (showModelSuggestions && !activeSuggestions.isEmpty() && (activeTab.equals("Model & Anims") || activeTab.equals("Animations")) && activeModelField != null) {
             int formX = left + 110;
             int formY = top + 42;
-            int dropX = formX + 8;
+            int formW = (int) ((this.panelW - 120) * 0.6);
+            int dropX = activeTab.equals("Animations") ? (formX + 44) : (formX + 8);
+            int dropW = activeTab.equals("Animations") ? (formW - 52) : (formW - 16);
             int dropY = formY + modelSuggestionYOffset;
             int rowH = 12;
             int maxVisibleRows = 5;
@@ -1904,8 +1906,6 @@ public class MountCreatorScreen extends Screen {
                 dropY = formY + (modelSuggestionYOffset - 12) - dropH;
             }
 
-            int formW = (int) ((this.panelW - 120) * 0.6);
-            int dropW = formW - 16;
             if (mouseX >= dropX && mouseX <= dropX + dropW && mouseY >= dropY && mouseY <= dropY + dropH) {
                 int clickedRow = (int) ((mouseY - dropY) / rowH);
                 int idx = clickedRow + suggestionsScrollOffset;
@@ -2633,8 +2633,9 @@ public class MountCreatorScreen extends Screen {
         int formX = left + 110;
         int formY = top + 42;
         int formW = (int) ((this.panelW - 120) * 0.6);
-        if (showModelSuggestions && !activeSuggestions.isEmpty() && activeTab.equals("Model & Anims")) {
-            int dropX = formX + 8;
+        if (showModelSuggestions && !activeSuggestions.isEmpty() && (activeTab.equals("Model & Anims") || activeTab.equals("Animations"))) {
+            int dropX = activeTab.equals("Animations") ? (formX + 44) : (formX + 8);
+            int dropW = activeTab.equals("Animations") ? (formW - 52) : (formW - 16);
             int dropY = formY + modelSuggestionYOffset;
             int rowH = 12;
             int maxVisibleRows = 5;
@@ -2645,7 +2646,7 @@ public class MountCreatorScreen extends Screen {
                 dropY = formY + (modelSuggestionYOffset - 12) - dropH;
             }
 
-            if (mouseX >= dropX && mouseX <= dropX + (formW - 16) && mouseY >= dropY && mouseY <= dropY + dropH) {
+            if (mouseX >= dropX && mouseX <= dropX + dropW && mouseY >= dropY && mouseY <= dropY + dropH) {
                 int maxOffset = Math.max(0, activeSuggestions.size() - maxVisibleRows);
                 if (amount > 0) {
                     suggestionsScrollOffset = Math.max(0, suggestionsScrollOffset - 1);
@@ -2936,7 +2937,11 @@ public class MountCreatorScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_TAB) {
+        boolean isEnterOrTab = keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_TAB || 
+                               keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER || 
+                               keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER;
+
+        if (isEnterOrTab) {
             if (showModelSuggestions && !activeSuggestions.isEmpty() && activeModelField != null && activeModelField.isFocused()) {
                 int idx = Math.min(suggestionsScrollOffset, activeSuggestions.size() - 1);
                 if (idx >= 0 && idx < activeSuggestions.size()) {
@@ -2984,6 +2989,17 @@ public class MountCreatorScreen extends Screen {
                     showSoundSuggestions = false;
                     return true;
                 }
+            }
+        } else if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_UP) {
+            if ((showModelSuggestions || showSoundSuggestions) && !activeSuggestions.isEmpty()) {
+                suggestionsScrollOffset = Math.max(0, suggestionsScrollOffset - 1);
+                return true;
+            }
+        } else if (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_DOWN) {
+            if ((showModelSuggestions || showSoundSuggestions) && !activeSuggestions.isEmpty()) {
+                int maxOffset = Math.max(0, activeSuggestions.size() - 5);
+                suggestionsScrollOffset = Math.min(maxOffset, suggestionsScrollOffset + 1);
+                return true;
             }
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
