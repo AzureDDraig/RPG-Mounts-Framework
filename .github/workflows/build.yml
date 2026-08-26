@@ -87,3 +87,63 @@ jobs:
           prerelease: false
           files: release_jars/*
           generate_release_notes: true
+
+      - name: Locate Base Mod JARs & Extract Changelog
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
+        id: curseforge_prep
+        run: |
+          FABRIC_JAR=$(find fabric/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" | head -n 1)
+          FORGE_JAR=$(find forge/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" | head -n 1)
+          echo "fabric_jar=$FABRIC_JAR" >> $GITHUB_OUTPUT
+          echo "forge_jar=$FORGE_JAR" >> $GITHUB_OUTPUT
+          sed -n '/^### \[Build/,/^---/p' CHANGELOG.md | sed '$d' > latest_changelog.md
+          if [ ! -s latest_changelog.md ]; then
+            git log -1 --pretty=%B > latest_changelog.md
+          fi
+
+      - name: Publish Fabric to CurseForge
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
+        uses: modmuss50/mod-publish-action@v0.5.2
+        with:
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          curseforge-id: "1581040"
+          files: |
+            ${{ steps.curseforge_prep.outputs.fabric_jar }}
+          name: "RPG Mounts Framework [Fabric] - Build ${{ steps.build_info.outputs.base_build }}"
+          version: "${{ steps.build_info.outputs.base_build }}-fabric"
+          version-type: release
+          game-versions: |
+            1.20.1
+          loaders: |
+            fabric
+            quilt
+          java: |
+            17
+          curseforge-dependencies: |
+            architectury-api
+            geckolib
+            fabric-api
+          changelog-file: latest_changelog.md
+
+      - name: Publish Forge to CurseForge
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
+        uses: modmuss50/mod-publish-action@v0.5.2
+        with:
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          curseforge-id: "1581040"
+          files: |
+            ${{ steps.curseforge_prep.outputs.forge_jar }}
+          name: "RPG Mounts Framework [Forge] - Build ${{ steps.build_info.outputs.base_build }}"
+          version: "${{ steps.build_info.outputs.base_build }}-forge"
+          version-type: release
+          game-versions: |
+            1.20.1
+          loaders: |
+            forge
+            neoforge
+          java: |
+            17
+          curseforge-dependencies: |
+            architectury-api
+            geckolib
+          changelog-file: latest_changelog.md
