@@ -1,0 +1,56 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [ "main", "master" ]
+    tags: [ "v*" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build Base Mod (Fabric & Forge)
+        run: ./gradlew :fabric:build :forge:build --stacktrace
+
+      - name: Build Evolution Addon (Fabric & Forge)
+        run: ./gradlew :evolution_addon_fabric:build :evolution_addon_forge:build --stacktrace
+
+      - name: Collect Build Artifacts
+        if: always()
+        run: |
+          mkdir -p artifacts/base
+          mkdir -p artifacts/evolution_addon
+          find fabric/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev.jar" -exec cp {} artifacts/base/ \; || true
+          find forge/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev.jar" -exec cp {} artifacts/base/ \; || true
+          find evolution_addon/fabric/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev.jar" -exec cp {} artifacts/evolution_addon/ \; || true
+          find evolution_addon/forge/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev.jar" -exec cp {} artifacts/evolution_addon/ \; || true
+
+      - name: Upload Mod Jars
+        uses: actions/upload-artifact@v4
+        with:
+          name: RPG-Mounts-Framework-build-${{ github.sha }}
+          path: artifacts/
+          if-no-files-found: warn
