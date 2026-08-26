@@ -103,47 +103,32 @@ jobs:
 
       - name: Publish Fabric to CurseForge
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
-        uses: modmuss50/mod-publish-action@v0.5.2
+        uses: Kir-Antipov/mc-publish@v3.3
         with:
+          curseforge-id: 1581040
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-          curseforge-id: "1581040"
-          files: |
-            ${{ steps.curseforge_prep.outputs.fabric_jar }}
+          files: ${{ steps.curseforge_prep.outputs.fabric_jar }}
           name: "RPG Mounts Framework [Fabric] - Build ${{ steps.build_info.outputs.base_build }}"
-          version: "${{ steps.build_info.outputs.base_build }}-fabric"
+          version: "fabric-${{ steps.build_info.outputs.base_build }}"
           version-type: release
-          game-versions: |
-            1.20.1
+          game-versions: "1.20.1"
           loaders: |
             fabric
             quilt
-          java: |
-            17
-          curseforge-dependencies: |
-            architectury-api
-            geckolib
-            fabric-api
           changelog-file: latest_changelog.md
 
       - name: Publish Forge to CurseForge
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
-        uses: modmuss50/mod-publish-action@v0.5.2
+        uses: Kir-Antipov/mc-publish@v3.3
         with:
+          curseforge-id: 1581040
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
-          curseforge-id: "1581040"
-          files: |
-            ${{ steps.curseforge_prep.outputs.forge_jar }}
+          files: ${{ steps.curseforge_prep.outputs.forge_jar }}
           name: "RPG Mounts Framework [Forge] - Build ${{ steps.build_info.outputs.base_build }}"
-          version: "${{ steps.build_info.outputs.base_build }}-forge"
+          version: "forge-${{ steps.build_info.outputs.base_build }}"
           version-type: release
-          game-versions: |
-            1.20.1
+          game-versions: "1.20.1"
           loaders: |
             forge
             neoforge
-          java: |
-            17
-          curseforge-dependencies: |
-            architectury-api
-            geckolib
           changelog-file: latest_changelog.md
