@@ -1,12 +1,15 @@
-name: Build & Test
+name: Build & Release
 
 on:
   push:
     branches: [ "main", "master" ]
-    tags: [ "v*" ]
+    tags: [ "v*", "b*" ]
   pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -45,14 +48,42 @@ jobs:
         run: |
           mkdir -p artifacts/base
           mkdir -p artifacts/evolution_addon
-          find fabric/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" -exec cp {} artifacts/base/ \; || true
-          find forge/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" -exec cp {} artifacts/base/ \; || true
-          find evolution_addon/fabric/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" -exec cp {} artifacts/evolution_addon/ \; || true
-          find evolution_addon/forge/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" -exec cp {} artifacts/evolution_addon/ \; || true
+          mkdir -p release_jars
+          find fabric/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" -exec cp {} artifacts/base/ \; -exec cp {} release_jars/ \; || true
+          find forge/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" -exec cp {} artifacts/base/ \; -exec cp {} release_jars/ \; || true
+          find evolution_addon/fabric/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" -exec cp {} artifacts/evolution_addon/ \; -exec cp {} release_jars/ \; || true
+          find evolution_addon/forge/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" -exec cp {} artifacts/evolution_addon/ \; -exec cp {} release_jars/ \; || true
 
-      - name: Upload Mod Jars
+      - name: Upload Workflow Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: RPG-Mounts-Framework-build-${{ github.sha }}
           path: artifacts/
           if-no-files-found: warn
+
+      - name: Read build numbers
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
+        id: build_info
+        run: |
+          BASE_BUILD=$(cat build_number.txt | tr -d '\r\n')
+          EVO_BUILD=$(cat build_number_evolution.txt | tr -d '\r\n')
+          echo "base_build=$BASE_BUILD" >> $GITHUB_OUTPUT
+          echo "evo_build=$EVO_BUILD" >> $GITHUB_OUTPUT
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "release_name=Release ${{ github.ref_name }} (Build $BASE_BUILD / Evo $EVO_BUILD)" >> $GITHUB_OUTPUT
+          else
+            echo "tag_name=b$BASE_BUILD" >> $GITHUB_OUTPUT
+            echo "release_name=Build $BASE_BUILD (Evolution b$EVO_BUILD)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.build_info.outputs.tag_name }}
+          name: ${{ steps.build_info.outputs.release_name }}
+          draft: false
+          prerelease: false
+          files: release_jars/*
+          generate_release_notes: true
