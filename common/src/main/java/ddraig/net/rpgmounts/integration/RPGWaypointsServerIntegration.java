@@ -43,18 +43,39 @@ public class RPGWaypointsServerIntegration {
         return 0;
     }
 
-    // Nested class to defer classloading of com.rpgwaypoints.compass.db.DatabaseManager
+    // Nested class using reflection to decouple compile-time dependency on com.rpgwaypoints.compass.db.DatabaseManager
     private static class AuditHelper {
         public static void log(String adminName, String action, String waypointName) {
-            com.rpgwaypoints.compass.db.DatabaseManager.logAudit(adminName, action, waypointName);
+            try {
+                Class<?> dbClass = Class.forName("com.rpgwaypoints.compass.db.DatabaseManager");
+                java.lang.reflect.Method m = dbClass.getMethod("logAudit", String.class, String.class, String.class);
+                m.invoke(null, adminName, action, waypointName);
+            } catch (Throwable ignored) {}
         }
 
+        @SuppressWarnings("unchecked")
         public static List<String> getLogs(int page, int pageSize, String queryFilter) {
-            return com.rpgwaypoints.compass.db.DatabaseManager.getAuditLogs(page, pageSize, queryFilter);
+            try {
+                Class<?> dbClass = Class.forName("com.rpgwaypoints.compass.db.DatabaseManager");
+                java.lang.reflect.Method m = dbClass.getMethod("getAuditLogs", int.class, int.class, String.class);
+                Object res = m.invoke(null, page, pageSize, queryFilter);
+                if (res instanceof List) {
+                    return (List<String>) res;
+                }
+            } catch (Throwable ignored) {}
+            return Collections.emptyList();
         }
 
         public static int getLogsCount(String queryFilter) {
-            return com.rpgwaypoints.compass.db.DatabaseManager.getAuditLogsCount(queryFilter);
+            try {
+                Class<?> dbClass = Class.forName("com.rpgwaypoints.compass.db.DatabaseManager");
+                java.lang.reflect.Method m = dbClass.getMethod("getAuditLogsCount", String.class);
+                Object res = m.invoke(null, queryFilter);
+                if (res instanceof Integer) {
+                    return (Integer) res;
+                }
+            } catch (Throwable ignored) {}
+            return 0;
         }
     }
 }

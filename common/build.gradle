@@ -19,7 +19,4 @@ dependencies {
     
     // GeckoLib (compileOnly for common)
     compileOnly "software.bernie.geckolib:geckolib-fabric-1.20.1:${rootProject.geckolib_version}"
-
-    // RPG Waypoints compile dependency for custom tabs integration
-    modCompileOnly fileTree(dir: "../../RPG Waypoints and Compass/common/build/libs", include: "rpgwaypoints-*.jar", exclude: ["*-sources.jar", "*-transformProduction*"])
 }
