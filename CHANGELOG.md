@@ -4,6 +4,18 @@ This document tracks all builds and changes implemented.
 
 ---
 
+### [Build 131/132 - 26-239-17-35] (Compilation Successful)
+- **Animation Dropdown Click & Selection Fix (`MountCreatorScreen.java`)**:
+  - Fixed a coordinate offset discrepancy where clicking on suggested animation names (such as `walk`, `run`, `idle`) in the Animations tab dropdown failed to select the item.
+  - Added keyboard selection support: press **Enter**, **NumPad Enter**, or **Tab** to apply the active animation suggestion.
+  - Added **Up** and **Down** arrow keys to navigate and scroll through autocomplete suggestion lists via keyboard.
+  - Fixed mouse wheel scrolling inside the Animations tab suggestion dropdown.
+- **Automated CI/CD & Build Pipeline**:
+  - Integrated GitHub Actions automated builds with JDK 21 runner, multi-loader artifacts packaging, and auto-releases to GitHub and CurseForge.
+  - Decoupled optional RPG Waypoints integration via dynamic reflection proxies for clean standalone builds.
+
+---
+
 ### [Build 130 - 26-236-08-54] (Compilation Successful)
 - **GitHub Issue #13 Fixes & Feature Additions ([#13](https://github.com/AzureDDraig/RPG-Mounts-Framework/issues/13))**:
   - **Animation Fields Click & Edit Fix (`MountCreatorScreen.java`)**: Fixed visibility, active state, and editability for Walk, Run, Idle, Swim, Fly, Hover, Attack, and Jump text fields in the Animations tab.
