@@ -1,208 +1,150 @@
-# RPG Mount Framework - Rolling Build Changelog
-
-This document tracks all builds and changes implemented.
+# RPG Mount Framework - Changelog
 
 ---
 
-### [Build 133 - 26-241-07-36] (Compilation Successful)
-- **Anti-Duplicate Mount Prevention & Deduplication Fixes**:
-  - **Entity Lookup & Feed Synchronization (`RPGMountEntity.java`)**: Fixed `loadStatsFromDatabase()` and `getUnlockedData()` which previously failed to match instances because `unlockedMountsCache` is keyed by UUID `instanceId`. Feeding a mount now resolves and reuses existing player mount instances instead of generating new random instance IDs.
-  - **Database Manager Central Guard & Reuse (`DatabaseManager.java`)**: `saveUnlockedMountAsync` and `saveUnlockedMountDataAsync` now automatically check `prevent_duplicate_mounts` and reuse existing instance IDs for that template type, preventing rogue database duplicates from all sources.
-  - **Automatic Cache Deduplication & Pruning (`DatabaseManager.java`)**: Added `deduplicatePlayerMounts(playerUuid)` and `deduplicateAllCachedMounts()` which automatically prunes duplicate entries (keeping the highest level/bonding mount) when `prevent_duplicate_mounts` is enabled.
-  - **Admin Deduplicate Command (`MountCommands.java`)**: Added `/rpg_mounts admin deduplicate-mounts <player>` to clean up existing duplicate mounts for any target player.
-  - **Evolution Duplicate Guards (`DefaultEvolutionProvider.java`, `ModPackets.java`, `RPGMountsEvolutionCommon.java`)**: Added checks during item evolution and `/rpg_mounts force-evolve` to prevent evolving into a mount type the player already owns when `prevent_duplicate_mounts` is active.
-  - **Template Name & ID Resolution (`MountRegistry.java`, `MountCommands.java`)**: Made template resolution case-insensitive and added full name/ID cross-lookup so command inputs (e.g. `Horse`, `horse`, `Timber Wolf`, `"Timber Wolf"`) always match correctly against player-owned mounts.
+### [Build 133/134]
+- **Prevent Duplicate Mounts Fix**:
+  - Fixed an issue where feeding or interacting with a mount could save duplicate copies to your mount collection.
+  - Feeding a mount now properly updates and saves your existing mount.
+  - Evolving a mount is now blocked if you already own that target mount type when duplicate prevention is turned on.
+  - Added `/rpg_mounts admin deduplicate-mounts <player>` command to automatically clean up existing duplicate mounts for any player (keeps the highest-level mount).
+  - Improved mount name recognition so commands understand names whether capitalized or lowercase.
+- **Clean Release Packaging**:
+  - Excluded development and source files from public release downloads.
+  - Fixed CurseForge file names so they match the exact mod jar file.
 
 ---
 
-### [Build 131/132 - 26-239-17-35] (Compilation Successful)
-- **Animation Dropdown Click & Selection Fix (`MountCreatorScreen.java`)**:
-  - Fixed a coordinate offset discrepancy where clicking on suggested animation names (such as `walk`, `run`, `idle`) in the Animations tab dropdown failed to select the item.
-  - Added keyboard selection support: press **Enter**, **NumPad Enter**, or **Tab** to apply the active animation suggestion.
-  - Added **Up** and **Down** arrow keys to navigate and scroll through autocomplete suggestion lists via keyboard.
-  - Fixed mouse wheel scrolling inside the Animations tab suggestion dropdown.
-- **Automated CI/CD & Build Pipeline**:
-  - Integrated GitHub Actions automated builds with JDK 21 runner, multi-loader artifacts packaging, and auto-releases to GitHub and CurseForge.
-  - Decoupled optional RPG Waypoints integration via dynamic reflection proxies for clean standalone builds.
+### [Build 131/132]
+- **Animation Menu Improvements**:
+  - Fixed an issue where clicking on suggested animation names (like walk, run, idle) in the Creator menu failed to select them.
+  - Added full keyboard support: use Up/Down arrow keys to browse suggestions, and press Enter or Tab to select.
+  - Fixed mouse wheel scrolling inside the animation suggestions dropdown.
+- **Automated Publishing**:
+  - Set up automatic release builds for both Fabric and Forge on GitHub and CurseForge.
 
 ---
 
-### [Build 130 - 26-236-08-54] (Compilation Successful)
-- **GitHub Issue #13 Fixes & Feature Additions ([#13](https://github.com/AzureDDraig/RPG-Mounts-Framework/issues/13))**:
-  - **Animation Fields Click & Edit Fix (`MountCreatorScreen.java`)**: Fixed visibility, active state, and editability for Walk, Run, Idle, Swim, Fly, Hover, Attack, and Jump text fields in the Animations tab.
-  - **Sound & Suggestion Overlay Click Fix (`MountCreatorScreen.java`)**: Resolved suggestion dropdown box blocking mouse clicks to underlying sound fields (`soundHurtField`, `soundDeathField`, `spawnSoundField`).
-  - **Mount Preview Zoom Persistence (`MountCreatorScreen.java`, `MountData.java`)**: Adjusting viewport zoom (`+` / `-`) in the Mount Creator now saves directly into `previewZoom` in `mount.json`, allowing creators to configure custom default zoom levels for the Mount Manager HUD.
-  - **Synchronized Multiplayer Mount Particles (`RPGMountEntity.java`)**: Updated particle trail calculations using position delta differences (`xo`, `zo`) so all players on multiplayer servers can view the riding player's ground, aquatic, and flight mount particle trails.
-  - **Synchronized Mount Summon Effects (`ModPackets.java`)**: Summoning a mount now broadcasts `spawnEffects.sound` and `spawnEffects.particle` server-wide (`sendParticles` / `playSound`) so all nearby players hear and see the summoning sequence.
-  - **Prevent Duplicate Mounts Config (`ModConfig.java`, `MountCommands.java`, `ConfigEditorScreen.java`)**: Added `prevent_duplicate_mounts` option to `server_config.json` and in-game config GUI to prevent players from receiving duplicate mounts of the same type.
+### [Build 130]
+- **Mount Creator Menu Fixes**:
+  - Fixed text boxes for Walk, Run, Idle, Swim, Fly, Hover, Attack, and Jump animations so they can be clicked and edited without issues.
+  - Fixed suggestion boxes blocking clicks to sound settings below them.
+  - Adjusting the 3D model zoom in the Creator now saves as the default view zoom in the Mount Manager menu.
+- **Visuals and Effects**:
+  - Fixed movement particle trails so other players on multiplayer servers can see them while you ride.
+  - Summoning a mount now plays sound and particle effects for all nearby players on the server.
+- **Duplicate Prevention Setting**:
+  - Added a `prevent_duplicate_mounts` setting in the server config and in-game menu to stop players from getting duplicate mounts of the same type.
 
 ---
 
-### [Build 128/129 - 26-221-21-00] (Compilation Successful)
-- **25th Mount Template Deletion & Overwrite Bugfix**:
-  - **Template ID Collision Prevention (`MountCreatorScreen.java`)**: Replaced unsafe `new_mount_ + (templatesList.size() + 1)` calculation in "Add Mount" with a collision check loop (`while (MountRegistry.loadedTemplates.containsKey(newId) || hasMountFolderOnDisk(newId))`) to guarantee creating new mounts never collides with or overwrites mount 25 or any existing template.
-  - **Auto-Register Unpacked Mount Folders (`MountRegistry.java`)**: Updated `reloadTemplates()` to automatically add any valid unpacked `mount.json` directory in `Mounts/Unpacked/` to `loaded_mounts` in `server_config.json` so no template folder on disk is ever orphaned or skipped.
-  - **Command Creation Sync (`MountCommands.java`)**: Ensured `/rpg_mounts admin create-mount <mount_id>` registers created mount IDs in `loaded_mounts`.
+### [Build 128/129]
+- **Mount Saving Improvements**:
+  - Fixed a bug where creating more than 24 mounts could overwrite existing mount templates.
+  - The game now automatically detects and registers all unpacked mount folders upon startup.
 
 ---
 
-### [Build 127 - 26-209-11-25] (Compilation Successful)
-- **GitHub Issue #12 Fixes & Feature Additions**:
-  - **Mount Creator UI Mount List Scrollbar & Mouse Wheel Scrolling (`MountCreatorScreen.java`)**: Added vertical scrollbar, scissor clipping box (`RenderSystem.enableScissor`), and mouse wheel scrolling to the sidebar template list.
-  - **Animation Tab Walk & Run Field Saving (`MountCreatorScreen.java`)**: Fixed saving and network synchronization of `walk` and `run` animation mappings in `saveTextFieldsToActiveTemplate()` regardless of model string casing.
-  - **Custom Hurt Sound Resolution & Playback (`RPGMountEntity.java`)**: Refactored `getSoundEvent` and `playMountSound` with `rpg_mounts:` namespace prefix fallback and safe `ResourceLocation.tryParse(...)` validation for custom hurt sound files.
-  - **Alphabetical Mount List Sorting**: Mount lists across Creator UI sidebar and Mount Manager HUD tabs (Ground, Aquatic, Flying) are now sorted alphabetically (`a.compareToIgnoreCase(b)`).
-  - **HUD Ancestry Tab Overflow Fix (`MountHUDScreen.java`)**: Dynamically calculated right-hand tab bounds (`maxAncRight`) and added text truncation (`plainSubstrByWidth`) to prevent the Ancestry tab label from overflowing past the HUD frame.
-  - **Favorite Mount Hotkey & Star Toggle (`RPGMountsClient.java`, `MountHUDScreen.java`)**: Registered `favoriteKey` key mapping. Added `★ [Fav]` star toggle in `MountHUDScreen.java` next to mount titles to set favorite mounts, and pressing the hotkey summons the favorite mount instantly.
-  - **Default Mount Preview Camera Settings (`MountData.java`, `MountHUDScreen.java`)**: Added `previewZoom` and `previewOffsetY` to `MountData` and 3D preview viewport calculation so models open pre-zoomed and centered according to template defaults.
+### [Build 127]
+- **User Interface & Controls**:
+  - Added scrollbar and mouse wheel scrolling to the sidebar list in the Mount Creator.
+  - Added a Favorite Star button (`★`) in the Mount Manager HUD and a Favorite Mount keybind to instantly summon your favorite mount.
+  - Mount lists in the Creator and Mount Manager are now sorted alphabetically.
+  - Fixed text overflow in the Mount Ancestry tab.
+  - Fixed custom hurt sounds not playing for custom mounts.
 
 ---
 
-### [Build 126 - 26-206-21-54] (Compilation Successful)
-- **Epic Fight / Resource Reload Crash Fix (`DynamicMountPackResources.java`)**:
-  - Resolved client crash during game loading / overlay render (`ForgeLoadingOverlay`) caused when Epic Fight or Minecraft reloads sound and pack resources.
-  - Added strict path sanitization (`sanitizePath`) to lower-case, strip invalid special characters, and convert spaces to underscores for all dynamic `.ogg` sound resources and `.geo.json` / `.animation.json` pack entries.
-  - Replaced raw `new ResourceLocation(...)` calls with `ResourceLocation.tryParse(...)` wrapped in safe exception handling to prevent any non-canonical user filename from crashing the game client.
-  - Added case-insensitive cross-platform file lookup (`findFileCaseInsensitive`) to guarantee sound files match seamlessly on Windows, Linux, and macOS.
+### [Build 126]
+- **Compatibility & Stability**:
+  - Fixed a crash during game loading when reloading resource packs or playing with Epic Fight.
+  - Improved file lookup on Linux, macOS, and Windows to prevent missing sound file errors.
 
 ---
 
-### [Build 125 - 26-205-00-53] (Compilation Successful)
-- **Aquatic Mount Performance & Lag Spike Fixes**:
-  - Identified and fixed 4 severe sources of server tick overhead and lag spikes from Spark profiling (`https://spark.lucko.me/kAvyAOpCZ0`).
-  - **MountFloatGoal Bypassing**: Created `MountFloatGoal` to prevent Vanilla `FloatGoal` from executing `jumpControl.jump()` 20 times per second for `AQUATIC` mounts in water.
-  - **Water-Avoiding Stroll Fix**: Created `MountStrollGoal` to stop `WaterAvoidingRandomStrollGoal` from executing failing land-path search loops every tick while aquatic mounts are in water.
-  - **Water Riding & Fluid Push Overrides**: Overrode `canBeRiddenInWater(Entity rider)` to return `true` for `AQUATIC` and `SURFACE_WATER` mounts to prevent Vanilla dismount ticks, and overrode `isPushedByFluid()` to return `false` for `AQUATIC` mounts in fluids.
-  - **Throttled Water Breathing Allocations**: Optimized water breathing effect application in `RPGMountEntity.java` to tick every 10 ticks and only apply when duration is under 30 ticks, eliminating 95%+ of effect allocations and network sync packets.
+### [Build 125]
+- **Aquatic Mount Performance**:
+  - Fixed major server lag spikes caused by swimming mounts in water.
+  - Improved water riding physics so players are not unexpectedly dismounted.
+  - Optimized underwater breathing effects to reduce network lag.
 
 ---
 
-### [Build 123 - 26-202-00-51] (Compilation Successful)
-- **Multi-Language Support for "Animations" Tab**:
-  - Added `"gui.rpg_mounts.creator.tab.animations"` translation key to all 9 supported language files (`en_us`, `pt_br`, `es_es`, `de_de`, `fr_fr`, `ja_jp`, `ko_kr`, `ru_ru`, `zh_cn`).
-  - `"Animations"` tab header and tab bar text now automatically adapts according to the player's client language settings.
+### [Build 123]
+- **Translations**:
+  - Added translations for the Animations tab across all supported languages (English, Portuguese, Spanish, German, French, Japanese, Korean, Russian, Simplified Chinese).
 
 ---
 
-### [Build 122 - 26-202-00-38] (Compilation Successful)
-- **Dynamic "Animations" Tab UI**:
-  - Moved the Animation Triggers panel out of the 3D preview viewport into a dedicated, dynamic `"Animations"` tab in `MountCreatorScreen.java`.
-  - The `"Animations"` tab automatically appears in the top tab navigation bar whenever a mount template has a GeckoLib `.animation.json` file configured, and hides if no animation file is set.
-  - The right side 3D Mount Preview viewport is now 100% clean and unobstructed.
-  - The 8 animation fields (`Idle`, `Walk`, `Run`, `Swim`, `Fly`, `Hover`, `Attack`, `Jump`) now render cleanly stacked inside the left form panel box, complete with auto-detection dropdowns and `Tab` completion.
-- **Universal Text Bleedthrough Fix for Dropdown Boxes**:
-  - Elevated suggestion dropdown rendering to `Z=500.0f` with `graphics.pose().pushPose()` / `graphics.pose().translate(0, 0, 500.0f)` and solid opaque background fill (`0xFF161616`) in `MountCreatorScreen.java` and `AbilityCreatorScreen.java`.
-  - Solved text bleedthrough where underlying field labels or inputs (`crabmount.png`, `Texture Location:`) bled through active dropdown boxes.
+### [Build 122]
+- **Dedicated Animations Tab**:
+  - Moved animation settings to their own tab in the Mount Creator so the 3D preview window is clear and unobstructed.
+  - Fixed text from underlying menus showing through open dropdown boxes.
 
 ---
 
-### [Build 121 - 26-202-00-28] (Compilation Successful)
-- **Command Autocomplete Root-Cause Fix**:
-  - Removed client-incompatible `if (context.getSource() instanceof CommandSourceStack)` checks from `OWNED_MOUNTS_SUGGESTER` and `TARGET_OWNED_MOUNTS_SUGGESTER` in `MountCommands.java`.
-  - In Minecraft's client-side chat bar, Brigadier suggestion providers receive a `ClientSuggestionProvider` (which does NOT implement `CommandSourceStack`), causing suggestion providers with `instanceof CommandSourceStack` checks to produce zero suggestions on the client.
-  - Both suggestion providers now work seamlessly on both client and server, immediately displaying autocompletes for Mount IDs (e.g. `new_mount_5`), custom names (e.g. `Spidersz`), display names, and template IDs.
+### [Build 121]
+- **Command Suggestions**:
+  - Fixed chat autocomplete suggestions for mount commands so they work for all players in multiplayer.
 
 ---
 
-### [Build 120 - 26-202-00-12] (Compilation Successful)
-- **Animation Triggers HUD UI & Z-Level Fixes**:
-  - Elevated rendering of the Animation Triggers HUD using Z-level translation (`Z=200`) in `MountCreatorScreen.java` to prevent 3D preview model and background text bleedthrough.
-  - Added a solid dark grey backdrop box (`0xFE181818`) with gold/black borders (`UIHelper.drawOutline`) behind the 8 animation fields.
-  - Implemented mouse click interception for the Animation HUD bounding box in `mouseClicked`, consuming click events to prevent misclicks behind the panel or dragging the 3D entity preview model.
-- **Aquatic & Surface Water Movement Particles**:
-  - Added customizable movement particle trail support (`groundParticleField`) for `AQUATIC` and `SURFACE_WATER` mounts when moving in water or submerged in `RPGMountEntity.java`.
-  - Exposed `groundParticleField` in `MountCreatorScreen.java` for `AQUATIC` mounts so creators can customize water movement particles.
-- **Remove Mount Autocomplete Search Fix**:
-  - Changed `remove-mount` `instance_id` argument type from `greedyString()` to `StringArgumentType.string()` in `MountCommands.java`, enabling native client-side Brigadier Tab completion.
-  - Updated `TARGET_OWNED_MOUNTS_SUGGESTER` and `suggestOwnedMounts` to unquote search queries and offer clean unquoted template IDs (e.g. `crimson_drake`), UUIDs, and quoted names.
+### [Build 120]
+- **Aquatic Movement Trails**:
+  - Added custom particle trail support for water mounts while swimming.
+  - Improved visual layering in the Mount Creator menu.
 
 ---
 
-### [Build 119 - 26-202-18-48] (Compilation Successful)
-- **Remove Mount Command & Persistence Fixes**:
-  - Updated `/rpg_mounts admin remove-mount` to support targeting both online players and offline player game profiles.
-  - Implemented multi-matching resolution supporting UUIDs, template IDs (e.g. `crimson_drake`), custom display names, and space-separated strings.
-  - Added `removeMatchingUnlockedMountsAsync` in `DatabaseManager.java` to purge matching mount instances from memory cache, `unlocked_mounts`, and `mount_gear` SQLite tables.
-  - Added passenger ejection and entity despawning across all world levels, and cleared active mount records.
-  - Updated Brigadier suggestions to wrap space-containing names in double quotes `"..."` and handle `greedyString()` arguments cleanly.
-- **Animation Triggers HUD**:
-  - Added a dedicated **Animation Triggers HUD** section on the "Model & Anims" tab in `MountCreatorScreen.java` exposing 8 animation state fields: `Idle`, `Walk`, `Run`, `Swim`, `Fly`, `Hover`, `Attack`, and `Jump`.
-  - Integrated live auto-detection dropdown suggestions and `Tab`-key completion from `.animation.json` for all 8 animation states.
-  - Added `C2S_SAVE_ANIMATION_MAPPINGS` network packet in `ModPackets.java` to serialize and synchronize `animation_mappings.json` across client and server.
+### [Build 119]
+- **Admin Commands & Tools**:
+  - Improved `/rpg_mounts admin remove-mount` to support offline players, mount names, and template IDs.
+  - Added an Animation Triggers HUD in the Creator menu with live suggestions.
 
 ---
 
-### [Build 118 - 26-202-03-20] (Compilation Successful)
-- **Animation Auto-Detection & Autocomplete**:
-  - Implemented automatic parsing of GeckoLib `.animation.json` files in `MountRegistry.java` to extract all animation names defined for a mount model.
-  - Added live search-by-typing, clickable suggestion dropdowns, and `Tab`-key completion to animation input fields in both `MountCreatorScreen` ("Model & Anims" & "Abilities" tabs) and `AbilityCreatorScreen` ("Custom Anim Name").
-  - Registered `ANIMATION_SUGGESTER` in `MountCommands.java` for Brigadier command animation suggestions.
+### [Build 118]
+- **Animation Auto-Detection**:
+  - Added automatic scanning of model animation files to suggest animation names as you type.
 
 ---
 
-### [Build 117 - 26-202-03-13] (Compilation Successful)
-- **UI Input Character Limit**:
-  - Increased the maximum length of edit boxes to 1024 (from default 32) in both `AbilityCreatorScreen` and `MountCreatorScreen` to prevent truncation of long sound IDs and resource paths.
-- **Multiplayer Mount Sounds**:
-  - Fixed an issue where custom/unregistered mount sounds would not play on multiplayer servers due to packet serialization errors on unregistered `SoundEvent`s.
-  - Implemented client-server sound synchronization using a custom `S2C_PLAY_SOUND` packet, which broadcasts sound playback events by name (string) and resolves them client-side.
-- **Command Suggestions & Autocomplete**:
-  - Restored autocomplete suggestions for the `/rpg_mounts admin remove-mount` command by changing the `instance_id` argument type from `greedyString()` to `string()`.
-  - Added server-side initials-based matching (`cd` -> `crimson_drake`), substring, and prefix matching to suggestions.
-  - Updated command suggestion formatting and template/instance resolution to seamlessly bypass client-side prefix matching filters.
+### [Build 117]
+- **Multiplayer Sound Sync**:
+  - Fixed custom mount sounds so all players on multiplayer servers can hear them.
+  - Increased character limit in text boxes to support long file paths.
 
 ---
 
-### [Build 116 - 26-201-14-51] (Compilation Successful)
-- **Jump Fall Damage**:
-  - Implemented real-time tracking of jump altitudes (`jumpStartY`, `maxJumpY`) during a mount's active jump.
-  - Subtracted the actual vertical jump height achieved (`maxJumpY - jumpStartY`) from the final `fallDistance` upon landing. This completely prevents self-fall damage from jumping when landing at the starting level or higher, while still retaining realistic damage if falling below the starting block.
-- **Ability Naming Robustness**:
-  - Overloaded `evaluatePassive()` in `RPGMountEntity.java` to support lists of alternate/alias names.
-  - Configured `Step Assist` to check `"Step Assist"`, `"StepAssist"`, `"Assistant Step"`, `"Step Assistant"`, and `"Assistant Step Assist"` to ensure the passive works regardless of template naming variants.
-- **Creator Sound Player**:
-  - Shortened sound field widths in the "Sounds & FX" tab to leave room.
-  - Added interactive green play buttons (`▶`) next to the Ambient, Step, Hurt, Death, and Spawn Sound fields in the Creator UI, enabling creators to play/test sounds directly.
-- **Command Template Resolution**:
-  - Updated admin template commands (`add-mount`, `unload-mount`, `edit-mount`, `delete-mount`, and `pack-mount`) to accept string types (supporting quotes and spaces for names like `"ekelboi lava"`).
-  - Resolved input template IDs by checking if they match loaded template names case-insensitively.
-  - Enhanced `LOADED_TEMPLATES_SUGGESTER` to autocomplete both template IDs and template names.
+### [Build 116]
+- **Fall Damage & Sounds**:
+  - Fixed mounts taking fall damage from their own normal jumps.
+  - Added interactive Play buttons in the Mount Creator to preview sounds directly in-game.
+  - Improved Step Assist ability detection.
 
 ---
 
-### [Build 115 - 26-201-14-33] (Compilation Successful)
-- **Commands & Autocomplete**:
-  - Changed `instance_id` argument type in `/rpg_mounts admin remove-mount` command from `string()` to `greedyString()`. This allows unquoted UUIDs (which contain hyphens) to be parsed correctly by Brigadier without syntax errors, restoring the autocomplete suggestions list.
+### [Build 115]
+- **Command Fixes**:
+  - Fixed autocomplete suggestions in the remove-mount command for long mount IDs.
 
 ---
 
-### [Build 114 - 26-201-14-30] (Compilation Successful)
-- **GUI & Summoning**:
-  - Resolved an issue where `"SURFACE_WATER"` category mounts could not be summoned because they did not appear in the Mount Management HUD lists.
-  - Added `"SURFACE_WATER"` category mounts to the client-side `aquaticMounts` category list in `MountHUDScreen`, making them visible and selectable.
+### [Build 114]
+- **Water Mount Fixes**:
+  - Fixed surface water mounts not appearing in the Mount Manager HUD.
 
 ---
 
-### [Build 113 - 26-201-03-50] (Compilation Successful)
-- **Commands**:
-  - Changed `/rpg_mounts admin remove-mount` to use `StringArgumentType.string()` for `instance_id` to allow UUID hyphens.
-  - Added active mount despawning and database cleanup when removing a mount.
-  - Added `/rpg_mounts admin view-mounts <player>` command for listing owned mounts.
-- **Separate Speed**:
-  - Implemented ground/flying speed separation for flying mounts.
-- **Localization & GUI**:
-  - Resolved PT-BR/translation text overlaps in HUD tabs, stat rows, and ability slots.
-  - Made Creator UI suggestions dropdown wider and dynamically truncated items using font width.
-- **Jump Fall Damage**:
-  - Subtracted the mount's jump height block equivalent from fall damage to prevent self-damage.
-- **Surface Water Mounts**:
-  - Added `"SURFACE_WATER"` category, enabling boat-like floating physics in water and slow land traversal.
-- **Template Duplication**:
-  - Added `Copy Mount` button to the Creator UI sidebar to easily clone template configurations.
+### [Build 113]
+- **New Features & Improvements**:
+  - Added `/rpg_mounts admin view-mounts <player>` command to check owned mounts.
+  - Added separate land and flight speeds for flying mounts.
+  - Added Surface Water mount category for boat-like floating mounts.
+  - Added a Copy Mount button in the Creator to easily duplicate existing templates.
 
 ---
 
-### [Build 112 - 26-180-13-05]
-- **Animation Config**:
-  - Added `animation_mappings.json` config load and network synchronization.
-  - Updated keyframe animations and GeckoLib models to dynamically retrieve custom walk, idle, run, swim, fly, and attack animations.
+### [Build 112]
+- **Dynamic Animations**:
+  - Added custom animation configuration support for walking, running, idling, swimming, flying, and attacking.
