@@ -49,10 +49,12 @@ jobs:
           mkdir -p artifacts/base
           mkdir -p artifacts/evolution_addon
           mkdir -p release_jars
-          find fabric/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" -exec cp {} artifacts/base/ \; -exec cp {} release_jars/ \; || true
-          find forge/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" -exec cp {} artifacts/base/ \; -exec cp {} release_jars/ \; || true
-          find evolution_addon/fabric/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" -exec cp {} artifacts/evolution_addon/ \; -exec cp {} release_jars/ \; || true
-          find evolution_addon/forge/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" -exec cp {} artifacts/evolution_addon/ \; -exec cp {} release_jars/ \; || true
+          find fabric/build/libs/ -maxdepth 1 -type f -name "*-fabric-*.jar" ! -name "*sources*" ! -name "*dev*" ! -name "*shadow*" -exec cp {} artifacts/base/ \; -exec cp {} release_jars/ \; || true
+          find forge/build/libs/ -maxdepth 1 -type f -name "*-forge-*.jar" ! -name "*sources*" ! -name "*dev*" ! -name "*shadow*" -exec cp {} artifacts/base/ \; -exec cp {} release_jars/ \; || true
+          find evolution_addon/fabric/build/libs/ -maxdepth 1 -type f -name "*-fabric-*.jar" ! -name "*sources*" ! -name "*dev*" ! -name "*shadow*" -exec cp {} artifacts/evolution_addon/ \; -exec cp {} release_jars/ \; || true
+          find evolution_addon/forge/build/libs/ -maxdepth 1 -type f -name "*-forge-*.jar" ! -name "*sources*" ! -name "*dev*" ! -name "*shadow*" -exec cp {} artifacts/evolution_addon/ \; -exec cp {} release_jars/ \; || true
+          find release_jars/ -type f \( -name "*sources*" -o -name "*dev*" -o -name "*shadow*" \) -delete || true
+          find artifacts/ -type f \( -name "*sources*" -o -name "*dev*" -o -name "*shadow*" \) -delete || true
 
       - name: Upload Workflow Artifacts
         uses: actions/upload-artifact@v4
@@ -92,8 +94,8 @@ jobs:
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/'))
         id: curseforge_prep
         run: |
-          FABRIC_JAR=$(find fabric/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" | head -n 1)
-          FORGE_JAR=$(find forge/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" | head -n 1)
+          FABRIC_JAR=$(find fabric/build/libs/ -maxdepth 1 -type f -name "*-fabric-*.jar" ! -name "*sources*" ! -name "*dev*" ! -name "*shadow*" | head -n 1)
+          FORGE_JAR=$(find forge/build/libs/ -maxdepth 1 -type f -name "*-forge-*.jar" ! -name "*sources*" ! -name "*dev*" ! -name "*shadow*" | head -n 1)
           FABRIC_NAME=$(basename "$FABRIC_JAR")
           FORGE_NAME=$(basename "$FORGE_JAR")
           echo "fabric_jar=$FABRIC_JAR" >> $GITHUB_OUTPUT
