@@ -94,8 +94,12 @@ jobs:
         run: |
           FABRIC_JAR=$(find fabric/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" | head -n 1)
           FORGE_JAR=$(find forge/build/libs/ -type f -name "*.jar" ! -name "*-sources.jar" ! -name "*-dev*.jar" ! -name "*-shadow.jar" | head -n 1)
+          FABRIC_NAME=$(basename "$FABRIC_JAR")
+          FORGE_NAME=$(basename "$FORGE_JAR")
           echo "fabric_jar=$FABRIC_JAR" >> $GITHUB_OUTPUT
           echo "forge_jar=$FORGE_JAR" >> $GITHUB_OUTPUT
+          echo "fabric_name=$FABRIC_NAME" >> $GITHUB_OUTPUT
+          echo "forge_name=$FORGE_NAME" >> $GITHUB_OUTPUT
           sed -n '/^### \[Build/,/^---/p' CHANGELOG.md | sed '$d' > latest_changelog.md
           if [ ! -s latest_changelog.md ]; then
             git log -1 --pretty=%B > latest_changelog.md
@@ -108,7 +112,7 @@ jobs:
           curseforge-id: 1581040
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
           files: ${{ steps.curseforge_prep.outputs.fabric_jar }}
-          name: "RPG Mounts Framework [Fabric] - Build ${{ steps.build_info.outputs.base_build }}"
+          name: ${{ steps.curseforge_prep.outputs.fabric_name }}
           version: "fabric-${{ steps.build_info.outputs.base_build }}"
           version-type: release
           game-versions: "1.20.1"
@@ -124,7 +128,7 @@ jobs:
           curseforge-id: 1581040
           curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
           files: ${{ steps.curseforge_prep.outputs.forge_jar }}
-          name: "RPG Mounts Framework [Forge] - Build ${{ steps.build_info.outputs.base_build }}"
+          name: ${{ steps.curseforge_prep.outputs.forge_name }}
           version: "forge-${{ steps.build_info.outputs.base_build }}"
           version-type: release
           game-versions: "1.20.1"
