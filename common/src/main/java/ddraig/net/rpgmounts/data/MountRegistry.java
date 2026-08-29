@@ -410,7 +410,34 @@ public class MountRegistry {
     }
 
     public static MountData getTemplate(String id) {
-        return loadedTemplates.get(id);
+        if (id == null || id.isEmpty()) return null;
+        MountData d = loadedTemplates.get(id);
+        if (d != null) return d;
+        for (MountData data : loadedTemplates.values()) {
+            if (data.id != null && data.id.equalsIgnoreCase(id)) return data;
+        }
+        for (MountData data : loadedTemplates.values()) {
+            if (data.name != null && data.name.equalsIgnoreCase(id)) return data;
+        }
+        return null;
+    }
+
+    public static String resolveTemplateId(String input) {
+        if (input == null || input.isEmpty()) return input;
+        if (input.startsWith("\"") && input.endsWith("\"") && input.length() > 1) {
+            input = input.substring(1, input.length() - 1);
+        }
+        if (input.contains(" (") && input.endsWith(")")) {
+            int openParen = input.lastIndexOf(" (");
+            String extracted = input.substring(openParen + 2, input.length() - 1);
+            MountData d = getTemplate(extracted);
+            if (d != null) {
+                return d.id;
+            }
+            input = extracted;
+        }
+        MountData d = getTemplate(input);
+        return d != null ? d.id : input;
     }
 
     private static final Map<String, java.util.List<String>> animationNamesCache = new ConcurrentHashMap<>();

@@ -237,6 +237,7 @@ public class ModConfig {
         if (line.contains("\"enable_chroma_mutations\"")) return "If enabled, mounts have a rare chance to evolve into a chroma mutation variant with inverted colors.";
         if (line.contains("\"chroma_mutation_chance\"")) return "The percentage probability (0.0 to 1.0) of a chroma mutation occurring during evolution.";
         if (line.contains("\"enable_environmental_triggers\"")) return "If enabled, allows environmental factors (like biome, block category, time) to trigger evolutions.";
+        if (line.contains("\"prevent_duplicate_mounts\"")) return "If enabled, prevents players from unlocking or receiving duplicate copies of the same mount type.";
         return null;
     }
 }

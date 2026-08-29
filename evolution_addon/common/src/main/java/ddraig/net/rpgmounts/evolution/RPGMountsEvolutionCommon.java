@@ -161,6 +161,14 @@ public class RPGMountsEvolutionCommon {
                                             UUID playerUuid = target.getUUID();
                                             Map<String, DatabaseManager.UnlockedMountData> owned = DatabaseManager.unlockedMountsCache.get(playerUuid);
                                             String instanceId = mount.getInstanceId();
+                                            if (ddraig.net.rpgmounts.config.ModConfig.get().general.prevent_duplicate_mounts && owned != null) {
+                                                boolean alreadyOwns = owned.values().stream().anyMatch(d -> 
+                                                    !d.instanceId.equals(instanceId) && DatabaseManager.isSameTemplate(d.mountId, targetId));
+                                                if (alreadyOwns) {
+                                                    context.getSource().sendFailure(Component.literal("§cCannot evolve: Player already owns a mount of type " + targetData.name + "."));
+                                                    return 0;
+                                                }
+                                            }
                                             if (owned != null && owned.containsKey(instanceId)) {
                                                 DatabaseManager.UnlockedMountData uData = owned.get(instanceId);
                                                 DatabaseManager.saveUnlockedMountDataAsync(

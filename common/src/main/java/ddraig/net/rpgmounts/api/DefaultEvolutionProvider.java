@@ -81,6 +81,17 @@ public class DefaultEvolutionProvider implements IEvolutionProvider {
             return false;
         }
 
+        if (ModConfig.get().general.prevent_duplicate_mounts) {
+            if (owned != null) {
+                boolean alreadyOwnsTarget = owned.values().stream().anyMatch(d -> 
+                    !d.instanceId.equals(uData.instanceId) && DatabaseManager.isSameTemplate(d.mountId, targetTemplateId));
+                if (alreadyOwnsTarget) {
+                    player.sendSystemMessage(Component.literal("§cCannot evolve: You already own a mount of type " + target.name + "."));
+                    return false;
+                }
+            }
+        }
+
         // Deduct items
         for (Map.Entry<String, Integer> req : current.evolution.requiredItems.entrySet()) {
             ResourceLocation itemId = new ResourceLocation(req.getKey());

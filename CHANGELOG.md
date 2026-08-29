@@ -4,6 +4,17 @@ This document tracks all builds and changes implemented.
 
 ---
 
+### [Build 133 - 26-241-07-36] (Compilation Successful)
+- **Anti-Duplicate Mount Prevention & Deduplication Fixes**:
+  - **Entity Lookup & Feed Synchronization (`RPGMountEntity.java`)**: Fixed `loadStatsFromDatabase()` and `getUnlockedData()` which previously failed to match instances because `unlockedMountsCache` is keyed by UUID `instanceId`. Feeding a mount now resolves and reuses existing player mount instances instead of generating new random instance IDs.
+  - **Database Manager Central Guard & Reuse (`DatabaseManager.java`)**: `saveUnlockedMountAsync` and `saveUnlockedMountDataAsync` now automatically check `prevent_duplicate_mounts` and reuse existing instance IDs for that template type, preventing rogue database duplicates from all sources.
+  - **Automatic Cache Deduplication & Pruning (`DatabaseManager.java`)**: Added `deduplicatePlayerMounts(playerUuid)` and `deduplicateAllCachedMounts()` which automatically prunes duplicate entries (keeping the highest level/bonding mount) when `prevent_duplicate_mounts` is enabled.
+  - **Admin Deduplicate Command (`MountCommands.java`)**: Added `/rpg_mounts admin deduplicate-mounts <player>` to clean up existing duplicate mounts for any target player.
+  - **Evolution Duplicate Guards (`DefaultEvolutionProvider.java`, `ModPackets.java`, `RPGMountsEvolutionCommon.java`)**: Added checks during item evolution and `/rpg_mounts force-evolve` to prevent evolving into a mount type the player already owns when `prevent_duplicate_mounts` is active.
+  - **Template Name & ID Resolution (`MountRegistry.java`, `MountCommands.java`)**: Made template resolution case-insensitive and added full name/ID cross-lookup so command inputs (e.g. `Horse`, `horse`, `Timber Wolf`, `"Timber Wolf"`) always match correctly against player-owned mounts.
+
+---
+
 ### [Build 131/132 - 26-239-17-35] (Compilation Successful)
 - **Animation Dropdown Click & Selection Fix (`MountCreatorScreen.java`)**:
   - Fixed a coordinate offset discrepancy where clicking on suggested animation names (such as `walk`, `run`, `idle`) in the Animations tab dropdown failed to select the item.

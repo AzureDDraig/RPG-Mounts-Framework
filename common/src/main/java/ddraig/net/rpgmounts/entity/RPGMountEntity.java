@@ -1354,7 +1354,10 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
                             serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.HEART, this.getX(), this.getY() + 0.5, this.getZ(), 7, 0.3, 0.3, 0.3, 0.1);
                         }
                         if (this.ownerUuid != null) {
-                            DatabaseManager.saveUnlockedMountAsync(this.ownerUuid, this.getInstanceId(), this.getTemplateId(), newBonding, this.getCustomName() != null ? this.getCustomName().getString() : "");
+                            DatabaseManager.UnlockedMountData existingData = getUnlockedData();
+                            String saveInstanceId = (existingData != null) ? existingData.instanceId : this.getInstanceId();
+                            this.setInstanceId(saveInstanceId);
+                            DatabaseManager.saveUnlockedMountAsync(this.ownerUuid, saveInstanceId, this.getTemplateId(), newBonding, this.getCustomName() != null ? this.getCustomName().getString() : "");
                             if (player instanceof ServerPlayer serverPlayer) {
                                 ModPackets.syncUnlockedMounts(serverPlayer);
                             }
@@ -2343,14 +2346,15 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
 
     public void loadStatsFromDatabase() {
         if (this.ownerUuid == null || this.getTemplateId().isEmpty()) return;
-        Map<String, DatabaseManager.UnlockedMountData> playerUnlocked = DatabaseManager.unlockedMountsCache.get(this.ownerUuid);
-        if (playerUnlocked != null) {
-            DatabaseManager.UnlockedMountData data = playerUnlocked.get(this.getTemplateId());
-            if (data != null) {
-                this.setBonding(data.bondingScore);
-                this.setLevel(data.level);
-                this.setXp((float) data.xp);
-                this.setChroma(data.isChroma);
+        DatabaseManager.UnlockedMountData data = getUnlockedData();
+        if (data != null) {
+            this.setInstanceId(data.instanceId);
+            this.setBonding(data.bondingScore);
+            this.setLevel(data.level);
+            this.setXp((float) data.xp);
+            this.setChroma(data.isChroma);
+            if (data.customName != null && !data.customName.isEmpty()) {
+                this.setCustomName(Component.literal(data.customName));
             }
         }
     }
@@ -2358,7 +2362,17 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
     public DatabaseManager.UnlockedMountData getUnlockedData() {
         if (this.ownerUuid == null || this.getTemplateId().isEmpty()) return null;
         Map<String, DatabaseManager.UnlockedMountData> map = DatabaseManager.unlockedMountsCache.get(this.ownerUuid);
-        return map != null ? map.get(this.getTemplateId()) : null;
+        if (map == null || map.isEmpty()) return null;
+        String inst = this.entityData.get(INSTANCE_ID);
+        if (inst != null && !inst.isEmpty() && map.containsKey(inst)) {
+            return map.get(inst);
+        }
+        for (DatabaseManager.UnlockedMountData d : map.values()) {
+            if (DatabaseManager.isSameTemplate(d.mountId, this.getTemplateId())) {
+                return d;
+            }
+        }
+        return null;
     }
 
     public double getHealthGrowth() {

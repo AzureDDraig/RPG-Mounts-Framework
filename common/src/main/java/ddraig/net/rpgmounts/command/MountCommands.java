@@ -289,8 +289,7 @@ public class MountCommands {
                                                     }
                                                     
                                                     if (ddraig.net.rpgmounts.config.ModConfig.get().general.prevent_duplicate_mounts) {
-                                                        Map<String, DatabaseManager.UnlockedMountData> owned = DatabaseManager.unlockedMountsCache.get(target.getUUID());
-                                                        if (owned != null && owned.values().stream().anyMatch(d -> d.mountId.equalsIgnoreCase(resolvedId))) {
+                                                        if (DatabaseManager.hasUnlockedMount(target.getUUID(), resolvedId) || DatabaseManager.hasUnlockedMount(target.getUUID(), inputId)) {
                                                             context.getSource().sendFailure(Component.literal("§cPlayer " + target.getName().getString() + " already owns a mount of type '" + resolvedId + "'."));
                                                             return 0;
                                                         }
@@ -305,6 +304,20 @@ public class MountCommands {
                                                     return 1;
                                                 })
                                         )
+                                )
+                        )
+                        // /rpg_mounts admin deduplicate-mounts <player>
+                        .then(Commands.literal("deduplicate-mounts")
+                                .then(Commands.argument("player", EntityArgument.player())
+                                        .executes(context -> {
+                                            ServerPlayer target = EntityArgument.getPlayer(context, "player");
+                                            int removed = DatabaseManager.deduplicatePlayerMounts(target.getUUID());
+                                            ModPackets.syncUnlockedMounts(target);
+                                            String adminName = context.getSource().getTextName();
+                                            ddraig.net.rpgmounts.integration.RPGWaypointsServerIntegration.logAudit(adminName, "DEDUPLICATE_MOUNTS (Removed " + removed + ") for " + target.getName().getString(), "deduplicate");
+                                            context.getSource().sendSuccess(() -> Component.literal("§aDeduplicated mounts for " + target.getName().getString() + ". Removed " + removed + " duplicate instance(s)."), true);
+                                            return 1;
+                                        })
                                 )
                         )
                         // /rpg_mounts admin remove-mount <player> <instance_id>
@@ -877,27 +890,7 @@ public class MountCommands {
     }
 
     private static String resolveTemplateId(String input) {
-        if (input == null) return null;
-
-        // Handle search completion format like: "typed (template_id)" or "typed -> template_id"
-        if (input.contains(" (") && input.endsWith(")")) {
-            int openParen = input.lastIndexOf(" (");
-            String extracted = input.substring(openParen + 2, input.length() - 1);
-            if (MountRegistry.loadedTemplates.containsKey(extracted)) {
-                return extracted;
-            }
-            input = extracted;
-        }
-
-        if (MountRegistry.loadedTemplates.containsKey(input)) {
-            return input;
-        }
-        for (MountData data : MountRegistry.loadedTemplates.values()) {
-            if (data.name != null && data.name.equalsIgnoreCase(input)) {
-                return data.id;
-            }
-        }
-        return input;
+        return MountRegistry.resolveTemplateId(input);
     }
 
     private static final java.util.regex.Pattern UUID_PATTERN = 

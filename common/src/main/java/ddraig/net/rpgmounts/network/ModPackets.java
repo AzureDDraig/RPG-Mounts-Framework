@@ -244,6 +244,14 @@ public class ModPackets {
                                 }
                             }
                             if (hasItems) {
+                                if (ddraig.net.rpgmounts.config.ModConfig.get().general.prevent_duplicate_mounts) {
+                                    boolean alreadyOwnsTarget = owned.values().stream().anyMatch(d -> 
+                                        !d.instanceId.equals(instanceId) && DatabaseManager.isSameTemplate(d.mountId, targetId));
+                                    if (alreadyOwnsTarget) {
+                                        player.sendSystemMessage(Component.literal("§cCannot evolve: You already own a mount of type " + target.name + "."));
+                                        return;
+                                    }
+                                }
                                 // Deduct items
                                 for (Map.Entry<String, Integer> req : current.evolution.requiredItems.entrySet()) {
                                     ResourceLocation itemId = new ResourceLocation(req.getKey());

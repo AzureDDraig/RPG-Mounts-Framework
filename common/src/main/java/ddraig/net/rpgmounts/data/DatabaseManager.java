@@ -339,8 +339,78 @@ public class DatabaseManager {
                     activeMountsCache.put(playerUuid, active);
                 }
             }
+            if (ddraig.net.rpgmounts.config.ModConfig.get().general.prevent_duplicate_mounts) {
+                deduplicateAllCachedMounts();
+            }
         } catch (SQLException e) {
             RPGMounts.LOGGER.error("Failed to load global database caches:", e);
+        }
+    }
+
+    public static boolean isSameTemplate(String idA, String idB) {
+        if (idA == null || idB == null) return false;
+        if (idA.equalsIgnoreCase(idB)) return true;
+        String resA = MountRegistry.resolveTemplateId(idA);
+        String resB = MountRegistry.resolveTemplateId(idB);
+        if (resA != null && resB != null && resA.equalsIgnoreCase(resB)) return true;
+        MountData tA = MountRegistry.getTemplate(idA);
+        MountData tB = MountRegistry.getTemplate(idB);
+        return tA != null && tB != null && tA.id != null && tB.id != null && tA.id.equalsIgnoreCase(tB.id);
+    }
+
+    public static boolean hasUnlockedMount(UUID playerUuid, String templateIdOrName) {
+        if (playerUuid == null || templateIdOrName == null) return false;
+        Map<String, UnlockedMountData> map = unlockedMountsCache.get(playerUuid);
+        if (map == null || map.isEmpty()) return false;
+        for (UnlockedMountData d : map.values()) {
+            if (isSameTemplate(d.mountId, templateIdOrName)) {
+                return true;
+            }
+            if (d.customName != null && !d.customName.isEmpty() && d.customName.equalsIgnoreCase(templateIdOrName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static int deduplicatePlayerMounts(UUID playerUuid) {
+        if (playerUuid == null) return 0;
+        Map<String, UnlockedMountData> map = unlockedMountsCache.get(playerUuid);
+        if (map == null || map.size() <= 1) return 0;
+
+        Map<String, List<UnlockedMountData>> groups = new HashMap<>();
+        for (UnlockedMountData d : map.values()) {
+            String resolved = MountRegistry.resolveTemplateId(d.mountId);
+            groups.computeIfAbsent(resolved.toLowerCase(Locale.ROOT), k -> new ArrayList<>()).add(d);
+        }
+
+        int removedCount = 0;
+        for (List<UnlockedMountData> list : groups.values()) {
+            if (list.size() > 1) {
+                // Sort to find the highest value instance: highest level, highest bonding, highest xp
+                list.sort((a, b) -> {
+                    int c = Integer.compare(b.level, a.level);
+                    if (c != 0) return c;
+                    c = Integer.compare(b.bondingScore, a.bondingScore);
+                    if (c != 0) return c;
+                    return Double.compare(b.xp, a.xp);
+                });
+
+                // Keep the first (best) one, delete remaining duplicates
+                for (int i = 1; i < list.size(); i++) {
+                    UnlockedMountData duplicate = list.get(i);
+                    map.remove(duplicate.instanceId);
+                    removeUnlockedMountAsync(playerUuid, duplicate.instanceId);
+                    removedCount++;
+                }
+            }
+        }
+        return removedCount;
+    }
+
+    public static void deduplicateAllCachedMounts() {
+        for (UUID playerUuid : unlockedMountsCache.keySet()) {
+            deduplicatePlayerMounts(playerUuid);
         }
     }
 
@@ -351,14 +421,27 @@ public class DatabaseManager {
 
     public static void saveUnlockedMountAsync(UUID playerUuid, String instanceId, String mountId, int bondingScore, String customName) {
         saveBestiaryDiscoveryAsync(playerUuid, mountId);
-        UnlockedMountData data = unlockedMountsCache.computeIfAbsent(playerUuid, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(instanceId, k -> {
-                    UnlockedMountData d = new UnlockedMountData();
-                    d.playerUuid = playerUuid;
-                    d.instanceId = instanceId;
-                    d.mountId = mountId;
-                    return d;
-                });
+        Map<String, UnlockedMountData> playerMap = unlockedMountsCache.computeIfAbsent(playerUuid, k -> new ConcurrentHashMap<>());
+        
+        String effectiveInstanceId = instanceId;
+        if (ddraig.net.rpgmounts.config.ModConfig.get().general.prevent_duplicate_mounts && !playerMap.containsKey(effectiveInstanceId)) {
+            for (UnlockedMountData existing : playerMap.values()) {
+                if (isSameTemplate(existing.mountId, mountId)) {
+                    effectiveInstanceId = existing.instanceId;
+                    break;
+                }
+            }
+        }
+        final String finalInstId = effectiveInstanceId;
+
+        UnlockedMountData data = playerMap.computeIfAbsent(finalInstId, k -> {
+            UnlockedMountData d = new UnlockedMountData();
+            d.playerUuid = playerUuid;
+            d.instanceId = finalInstId;
+            d.mountId = MountRegistry.resolveTemplateId(mountId);
+            return d;
+        });
+        data.mountId = MountRegistry.resolveTemplateId(mountId);
         data.bondingScore = bondingScore;
         data.customName = customName == null ? "" : customName;
         data.dirty = true;
@@ -404,14 +487,26 @@ public class DatabaseManager {
     public static void saveUnlockedMountDataAsync(UUID playerUuid, String instanceId, String mountId, int bondingScore, int level, double xp,
                                                   double damageDealt, double damageTaken, int hpZeroCount, double distanceTravelled,
                                                   boolean isChroma, String ancestryLog, String customName) {
-        UnlockedMountData data = unlockedMountsCache.computeIfAbsent(playerUuid, k -> new ConcurrentHashMap<>())
-                .computeIfAbsent(instanceId, k -> {
-                    UnlockedMountData d = new UnlockedMountData();
-                    d.playerUuid = playerUuid;
-                    d.instanceId = instanceId;
-                    d.mountId = mountId;
-                    return d;
-                });
+        Map<String, UnlockedMountData> playerMap = unlockedMountsCache.computeIfAbsent(playerUuid, k -> new ConcurrentHashMap<>());
+        String effectiveInstanceId = instanceId;
+        if (ddraig.net.rpgmounts.config.ModConfig.get().general.prevent_duplicate_mounts && !playerMap.containsKey(effectiveInstanceId)) {
+            for (UnlockedMountData existing : playerMap.values()) {
+                if (isSameTemplate(existing.mountId, mountId)) {
+                    effectiveInstanceId = existing.instanceId;
+                    break;
+                }
+            }
+        }
+        final String finalInstId = effectiveInstanceId;
+
+        UnlockedMountData data = playerMap.computeIfAbsent(finalInstId, k -> {
+            UnlockedMountData d = new UnlockedMountData();
+            d.playerUuid = playerUuid;
+            d.instanceId = finalInstId;
+            d.mountId = MountRegistry.resolveTemplateId(mountId);
+            return d;
+        });
+        data.mountId = MountRegistry.resolveTemplateId(mountId);
         data.bondingScore = bondingScore;
         data.level = level;
         data.xp = xp;
