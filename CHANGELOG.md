@@ -2,6 +2,13 @@
 
 ---
 
+### [Build 135]
+- **Mount Death Inventory Duplication Fix**:
+  - Fixed an issue where items in a mount's backpack or equipped gear would duplicate when the mount died.
+  - When a mount dies, its dropped equipment and backpack items are now properly cleared from storage so reviving or re-summoning the mount starts with an empty inventory.
+
+---
+
 ### [Build 133/134]
 - **Prevent Duplicate Mounts Fix**:
   - Fixed an issue where feeding or interacting with a mount could save duplicate copies to your mount collection.

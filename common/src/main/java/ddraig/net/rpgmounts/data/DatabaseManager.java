@@ -648,14 +648,27 @@ public class DatabaseManager {
     }
 
     public static void deleteMountGearAsync(UUID playerUuid, String instanceId) {
+        if (playerUuid == null || instanceId == null) return;
         Map<String, MountGearData> playerGear = mountGearCache.get(playerUuid);
-        if (playerGear != null) playerGear.remove(instanceId);
+        if (playerGear != null) {
+            playerGear.remove(instanceId);
+            String resolved = MountRegistry.resolveTemplateId(instanceId);
+            if (resolved != null) {
+                playerGear.remove(resolved);
+            }
+        }
         if (!isInitialized()) return;
         dbExecutor.submit(() -> {
             try {
                 deleteMountGearStmt.setString(1, playerUuid.toString());
                 deleteMountGearStmt.setString(2, instanceId);
                 deleteMountGearStmt.executeUpdate();
+                String resolved = MountRegistry.resolveTemplateId(instanceId);
+                if (resolved != null && !resolved.equals(instanceId)) {
+                    deleteMountGearStmt.setString(1, playerUuid.toString());
+                    deleteMountGearStmt.setString(2, resolved);
+                    deleteMountGearStmt.executeUpdate();
+                }
             } catch (SQLException e) {
                 RPGMounts.LOGGER.error("Failed to delete mount gear asynchronously:", e);
             }

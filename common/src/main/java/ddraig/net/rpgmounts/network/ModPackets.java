@@ -93,19 +93,16 @@ public class ModPackets {
                     if (!canSummonAt(player, data)) return;
                     dismissExistingMounts(player);
                     RPGMountEntity mount = new RPGMountEntity(ModEntities.RPG_MOUNT.get(), player.level());
+                    mount.setInstanceId(instanceId);
                     mount.setTemplateId(templateId);
                     mount.setOwnerUuid(player.getUUID());
                     if (uData != null) {
-                        mount.setInstanceId(instanceId);
                         mount.setBonding(uData.bondingScore);
                         mount.setLevel(uData.level);
                         mount.setXp((float) uData.xp);
                         if (uData.customName != null && !uData.customName.isEmpty()) {
                             mount.setCustomName(Component.literal(uData.customName));
                         }
-                    } else {
-                        // Admin summoning by template ID directly
-                        mount.setInstanceId(instanceId);
                     }
                     mount.setPos(player.getX(), player.getY(), player.getZ());
                     player.level().addFreshEntity(mount);

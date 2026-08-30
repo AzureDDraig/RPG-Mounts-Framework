@@ -267,6 +267,7 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
             this.setHealth((float) this.getAttributeValue(Attributes.MAX_HEALTH));
             this.entityData.set(STAMINA, (float) data.stats.maxStamina);
             if (!this.level().isClientSide && this.ownerUuid != null) {
+                loadStatsFromDatabase();
                 loadGearFromDatabase();
             }
         }
@@ -305,8 +306,8 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
         this.ownerUuid = ownerUuid;
         this.entityData.set(OWNER_UUID, ownerUuid == null ? "" : ownerUuid.toString());
         if (!this.level().isClientSide && !this.getTemplateId().isEmpty()) {
-            loadGearFromDatabase();
             loadStatsFromDatabase();
+            loadGearFromDatabase();
         }
     }
 
@@ -413,11 +414,33 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
         this.entityData.set(CARGO_ITEM, cargo.isEmpty() ? "" : net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(cargo.getItem()).toString());
     }
 
+    public String getGearKey() {
+        DatabaseManager.UnlockedMountData uData = getUnlockedData();
+        if (uData != null && uData.instanceId != null && !uData.instanceId.isEmpty()) {
+            return uData.instanceId;
+        }
+        String inst = this.entityData.get(INSTANCE_ID);
+        if (inst != null && !inst.isEmpty()) {
+            return inst;
+        }
+        return this.getTemplateId();
+    }
+
     public void loadGearFromDatabase() {
         if (this.ownerUuid == null) return;
         Map<String, DatabaseManager.MountGearData> playerGear = DatabaseManager.mountGearCache.get(this.ownerUuid);
         if (playerGear != null) {
-            DatabaseManager.MountGearData gear = playerGear.get(this.getTemplateId());
+            String key = getGearKey();
+            DatabaseManager.MountGearData gear = playerGear.get(key);
+            if (gear == null) {
+                String inst = this.entityData.get(INSTANCE_ID);
+                if (inst != null && !inst.isEmpty()) {
+                    gear = playerGear.get(inst);
+                }
+                if (gear == null) {
+                    gear = playerGear.get(this.getTemplateId());
+                }
+            }
             if (gear != null && !gear.cargoNbt.isEmpty()) {
                 try {
                     CompoundTag nbt = net.minecraft.nbt.TagParser.parseTag(gear.cargoNbt);
@@ -473,7 +496,8 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
         nbt.put("Items", saveContainerToTag(getInventory()));
         gear.cargoNbt = nbt.toString();
 
-        DatabaseManager.saveMountGearAsync(this.ownerUuid, this.getTemplateId(), gear);
+        String key = getGearKey();
+        DatabaseManager.saveMountGearAsync(this.ownerUuid, key, gear);
     }
 
     public double getEnhancerModifier(String category, String type) {
@@ -2289,10 +2313,18 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
                     this.spawnAtLocation(stack);
                 }
             }
-            // Remove gear record from database
+
+            // Remove gear record from database and memory cache
             if (this.ownerUuid != null) {
+                String key = getGearKey();
+                DatabaseManager.deleteMountGearAsync(this.ownerUuid, key);
                 DatabaseManager.deleteMountGearAsync(this.ownerUuid, this.getInstanceId());
+                DatabaseManager.deleteMountGearAsync(this.ownerUuid, this.getTemplateId());
             }
+
+            // Clear in-memory container so it no longer holds any items
+            getInventory().clearContent();
+            updateSynchedData();
 
             // Handle mortality based on server config
             if (ownerUuid != null) {
