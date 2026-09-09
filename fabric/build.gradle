@@ -40,6 +40,9 @@ dependencies {
     // GeckoLib
     modImplementation "software.bernie.geckolib:geckolib-fabric-1.20.1:${rootProject.geckolib_version}"
 
+    // AzureFrameLib
+    modImplementation "ddraig.net.azureframelib:azureframelib-fabric-1.20.1:${rootProject.azureframelib_version}"
+
     common(project(path: ':common', configuration: 'namedElements')) { transitive = false }
     shadowBundle project(path: ':common', configuration: 'transformProductionFabric')
 }

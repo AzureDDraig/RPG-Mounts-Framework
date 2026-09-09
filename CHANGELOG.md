@@ -2,6 +2,16 @@
 
 ---
 
+### [Build 136]
+- **Shared Core Library Integration (AzureFrameLib)**:
+  - Connected the mod to the central AzureFrameLib shared library for smoother performance and shared systems across mods.
+  - Upgraded mount save files to use the shared database engine with faster saving and lock protection.
+  - Switched mount 3D models and animations to load through the central model loader, allowing models to be shared between mods.
+  - Upgraded menus and screens to use the shared theme color palette.
+  - Improved autocomplete suggestions for sounds and particle effects in the Mount Creator screen.
+
+---
+
 ### [Build 135]
 - **Mount Death Inventory Duplication Fix**:
   - Fixed an issue where items in a mount's backpack or equipped gear would duplicate when the mount died.

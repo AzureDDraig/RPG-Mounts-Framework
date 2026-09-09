@@ -53,23 +53,9 @@ public class RPGMountGeoModel extends GeoModel<RPGMountEntity> {
     public BakedGeoModel getBakedModel(ResourceLocation location) {
         BakedGeoModel model = software.bernie.geckolib.cache.GeckoLibCache.getBakedModels().get(location);
         if (model == null) {
-            try {
-                String path = location.getPath();
-                if (path.startsWith("geo/") && path.endsWith(".geo.json")) {
-                    String modelId = path.substring(4, path.length() - 9);
-                    File file = findFileInUnpacked(modelId, ".geo.json");
-                    if (file != null && file.exists()) {
-                        String content = java.nio.file.Files.readString(file.toPath());
-                        JsonObject json = GsonHelper.fromJson(software.bernie.geckolib.util.JsonUtil.GEO_GSON, content, JsonObject.class);
-                        Model rawModel = software.bernie.geckolib.util.JsonUtil.GEO_GSON.fromJson(json, Model.class);
-                        BakedGeoModel bakedModel = BakedModelFactory.getForNamespace("rpg_mounts").constructGeoModel(GeometryTree.fromModel(rawModel));
-                        if (bakedModel != null) {
-                            software.bernie.geckolib.cache.GeckoLibCache.getBakedModels().put(location, bakedModel);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                ddraig.net.rpgmounts.RPGMounts.LOGGER.error("Failed to dynamically load/bake GeckoLib model: " + location, e);
+            Object loaded = ddraig.net.azureframelib.client.GeckoLibModelLoader.getOrLoadBakedModel(location);
+            if (loaded instanceof BakedGeoModel bgm) {
+                model = bgm;
             }
         }
         BakedGeoModel baked = super.getBakedModel(location);
@@ -236,22 +222,9 @@ public class RPGMountGeoModel extends GeoModel<RPGMountEntity> {
         ResourceLocation location = getAnimationResource(animatable);
         BakedAnimations bakedAnimations = software.bernie.geckolib.cache.GeckoLibCache.getBakedAnimations().get(location);
         if (bakedAnimations == null) {
-            try {
-                String path = location.getPath();
-                if (path.startsWith("animations/") && path.endsWith(".animation.json")) {
-                    String modelId = path.substring(11, path.length() - 15);
-                    File file = findFileInUnpacked(modelId, ".animation.json");
-                    if (file != null && file.exists()) {
-                        String content = java.nio.file.Files.readString(file.toPath());
-                        JsonObject json = GsonHelper.fromJson(software.bernie.geckolib.util.JsonUtil.GEO_GSON, content, JsonObject.class);
-                        bakedAnimations = software.bernie.geckolib.util.JsonUtil.GEO_GSON.fromJson(json.getAsJsonObject("animations"), BakedAnimations.class);
-                        if (bakedAnimations != null) {
-                            software.bernie.geckolib.cache.GeckoLibCache.getBakedAnimations().put(location, bakedAnimations);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                ddraig.net.rpgmounts.RPGMounts.LOGGER.error("Failed to dynamically load/bake GeckoLib animations: " + location, e);
+            Object loaded = ddraig.net.azureframelib.client.GeckoLibModelLoader.getOrLoadBakedAnimations(location);
+            if (loaded instanceof BakedAnimations ba) {
+                bakedAnimations = ba;
             }
         }
         return super.getAnimation(animatable, name);

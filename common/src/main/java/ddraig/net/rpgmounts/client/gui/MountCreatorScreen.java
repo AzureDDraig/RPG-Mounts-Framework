@@ -2761,10 +2761,8 @@ public class MountCreatorScreen extends Screen {
     private List<String> getSoundSuggestions(String query) {
         if (cachedSoundList == null) {
             List<String> list = new ArrayList<>();
-            // 1. Add all registered sound events
-            for (ResourceLocation loc : net.minecraft.core.registries.BuiltInRegistries.SOUND_EVENT.keySet()) {
-                list.add(loc.toString());
-            }
+            // 1. Add all registered sound events via ClientSuggestionsHelper
+            ddraig.net.azureframelib.client.ClientSuggestionsHelper.addClientSounds(list);
             // 2. Add custom ogg files
             java.io.File soundsDir = ddraig.net.rpgmounts.data.MountRegistry.getSoundsFolder();
             if (soundsDir.exists() && soundsDir.isDirectory()) {
@@ -2804,9 +2802,7 @@ public class MountCreatorScreen extends Screen {
     private List<String> getParticleSuggestions(String query) {
         if (cachedParticleList == null) {
             List<String> list = new ArrayList<>();
-            for (ResourceLocation loc : net.minecraft.core.registries.BuiltInRegistries.PARTICLE_TYPE.keySet()) {
-                list.add(loc.toString());
-            }
+            ddraig.net.azureframelib.client.ClientSuggestionsHelper.addClientParticles(list);
             cachedParticleList = new ArrayList<>(new java.util.HashSet<>(list));
             cachedParticleList.sort(String::compareToIgnoreCase);
         }

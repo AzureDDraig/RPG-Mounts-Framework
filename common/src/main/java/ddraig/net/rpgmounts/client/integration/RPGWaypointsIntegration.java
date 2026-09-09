@@ -62,17 +62,31 @@ public class RPGWaypointsIntegration {
     }
 
     public static int getThemeColor(String fieldName, int defaultColor) {
-        if (!waypointsLoaded) return defaultColor;
-        try {
-            Class<?> themeClass = Class.forName("com.rpgwaypoints.compass.client.gui.WaypointTheme");
-            Object theme = themeClass.getField("activeTheme").get(null);
-            if (theme != null) {
-                return themeClass.getField(fieldName).getInt(theme);
-            }
-        } catch (Throwable e) {
-            // Fallback
+        if (waypointsLoaded) {
+            try {
+                Class<?> themeClass = Class.forName("com.rpgwaypoints.compass.client.gui.WaypointTheme");
+                Object theme = themeClass.getField("activeTheme").get(null);
+                if (theme != null) {
+                    return themeClass.getField(fieldName).getInt(theme);
+                }
+            } catch (Throwable ignored) {}
         }
-        return defaultColor;
+        ddraig.net.azureframelib.client.theme.AzureTheme theme = ddraig.net.azureframelib.client.theme.AzureTheme.MEDIEVAL;
+        return switch (fieldName) {
+            case "panelBg" -> theme.panelBg;
+            case "panelHighlight" -> theme.panelHighlight;
+            case "panelShadow" -> theme.panelShadow;
+            case "panelBorder" -> theme.panelBorder;
+            case "slotBg" -> theme.slotBg;
+            case "slotShadow" -> theme.slotShadow;
+            case "slotHighlight" -> theme.slotHighlight;
+            case "buttonBg" -> theme.buttonBg;
+            case "buttonDisabledBg" -> theme.buttonDisabledBg;
+            case "textColor" -> theme.textColor;
+            case "textActiveColor" -> theme.textActiveColor;
+            case "textInactiveColor" -> theme.textInactiveColor;
+            default -> defaultColor;
+        };
     }
 
     public interface PanelHandler {

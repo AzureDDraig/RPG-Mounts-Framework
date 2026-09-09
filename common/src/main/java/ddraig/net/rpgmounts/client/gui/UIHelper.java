@@ -43,14 +43,30 @@ public class UIHelper {
         }
 
         static int getInt(String fieldName, int defaultValue) {
-            if (!INSTALLED) return defaultValue;
-            update();
-            if (activeTheme == null) return defaultValue;
-            try {
-                return activeTheme.getClass().getField(fieldName).getInt(activeTheme);
-            } catch (Exception e) {
-                return defaultValue;
+            if (INSTALLED) {
+                update();
+                if (activeTheme != null) {
+                    try {
+                        return activeTheme.getClass().getField(fieldName).getInt(activeTheme);
+                    } catch (Exception ignored) {}
+                }
             }
+            ddraig.net.azureframelib.client.theme.AzureTheme theme = ddraig.net.azureframelib.client.theme.AzureTheme.MEDIEVAL;
+            return switch (fieldName) {
+                case "panelBg" -> theme.panelBg;
+                case "panelHighlight" -> theme.panelHighlight;
+                case "panelShadow" -> theme.panelShadow;
+                case "panelBorder" -> theme.panelBorder;
+                case "slotBg" -> theme.slotBg;
+                case "slotShadow" -> theme.slotShadow;
+                case "slotHighlight" -> theme.slotHighlight;
+                case "buttonBg" -> theme.buttonBg;
+                case "buttonDisabledBg" -> theme.buttonDisabledBg;
+                case "textColor" -> theme.textColor;
+                case "textActiveColor" -> theme.textActiveColor;
+                case "textInactiveColor" -> theme.textInactiveColor;
+                default -> defaultValue;
+            };
         }
     }
     

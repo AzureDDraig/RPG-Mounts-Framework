@@ -19,4 +19,7 @@ dependencies {
     
     // GeckoLib (compileOnly for common)
     compileOnly "software.bernie.geckolib:geckolib-fabric-1.20.1:${rootProject.geckolib_version}"
+
+    // AzureFrameLib
+    modImplementation "ddraig.net.azureframelib:azureframelib-common-1.20.1:${rootProject.azureframelib_version}"
 }

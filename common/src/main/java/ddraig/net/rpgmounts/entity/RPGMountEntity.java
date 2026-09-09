@@ -2736,33 +2736,9 @@ public class RPGMountEntity extends PathfinderMob implements software.bernie.gec
     public static software.bernie.geckolib.loading.object.BakedAnimations getOrLoadBakedAnimations(ResourceLocation location, String templateId) {
         software.bernie.geckolib.loading.object.BakedAnimations baked = software.bernie.geckolib.cache.GeckoLibCache.getBakedAnimations().get(location);
         if (baked == null) {
-            try {
-                String path = location.getPath();
-                if (path.startsWith("animations/") && path.endsWith(".animation.json")) {
-                    MountData data = MountRegistry.getTemplate(templateId);
-                    String modelId = (data != null && data.modelId != null && !data.modelId.isEmpty()) ? data.modelId : templateId;
-                    
-                    java.io.File configFolder = MountRegistry.getMountsFolder();
-                    java.io.File unpackedFolder = new java.io.File(configFolder, modelId);
-                    if (unpackedFolder.exists() && unpackedFolder.isDirectory()) {
-                        java.io.File[] files = unpackedFolder.listFiles();
-                        if (files != null) {
-                            for (java.io.File f : files) {
-                                if (f.getName().toLowerCase().endsWith(".animation.json")) {
-                                    String content = java.nio.file.Files.readString(f.toPath());
-                                    com.google.gson.JsonObject json = net.minecraft.util.GsonHelper.fromJson(software.bernie.geckolib.util.JsonUtil.GEO_GSON, content, com.google.gson.JsonObject.class);
-                                    baked = software.bernie.geckolib.util.JsonUtil.GEO_GSON.fromJson(json.getAsJsonObject("animations"), software.bernie.geckolib.loading.object.BakedAnimations.class);
-                                    if (baked != null) {
-                                        ((java.util.Map) software.bernie.geckolib.cache.GeckoLibCache.getBakedAnimations()).put(location, baked);
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                RPGMounts.LOGGER.error("Failed to dynamically load/bake GeckoLib animations in common: " + location, e);
+            Object loaded = ddraig.net.azureframelib.client.GeckoLibModelLoader.getOrLoadBakedAnimations(location);
+            if (loaded instanceof software.bernie.geckolib.loading.object.BakedAnimations ba) {
+                baked = ba;
             }
         }
         return baked;

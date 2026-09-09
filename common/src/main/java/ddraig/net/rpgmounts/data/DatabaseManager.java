@@ -23,8 +23,6 @@ import java.util.concurrent.*;
 public class DatabaseManager {
     private static Connection connection;
     private static File dbFile;
-    private static Driver sqliteDriver;
-    private static boolean driverLoaded = false;
     private static Path activeWorldPath;
 
     // Thread-safe caches
@@ -48,82 +46,22 @@ public class DatabaseManager {
     private static PreparedStatement insertActiveMountStmt;
     private static PreparedStatement deleteActiveMountStmt;
 
-    public static synchronized void ensureDriverLoaded(Path worldPath) {
-        if (driverLoaded) return;
-
-        // Try standard classloading
-        try {
-            Class<?> jdbcClass;
-            try {
-                jdbcClass = Class.forName("org.sqlite.JDBC");
-            } catch (ClassNotFoundException ex) {
-                jdbcClass = Class.forName("com.rpgmounts.compass.sqlite.JDBC");
-            }
-            sqliteDriver = (Driver) jdbcClass.getDeclaredConstructor().newInstance();
-            driverLoaded = true;
-            RPGMounts.LOGGER.info("SQLite JDBC driver found on classpath.");
-            return;
-        } catch (Exception e) {
-            // Not found on classpath, load dynamically
-        }
-
-        // Copy and load dynamically
-        try {
-            File dbDir = new File(worldPath.toFile(), "rpg_mounts");
-            File libDir = new File(dbDir, "lib");
-            if (!libDir.exists()) {
-                libDir.mkdirs();
-            }
-            File jarFile = new File(libDir, "sqlite-jdbc-3.43.0.0.jar");
-            if (!jarFile.exists()) {
-                try (InputStream in = DatabaseManager.class.getResourceAsStream("/rpgmounts/lib/sqlite-jdbc-3.43.0.0.jar")) {
-                    if (in == null) {
-                        throw new IOException("Embedded SQLite JDBC driver jar not found in resources!");
-                    }
-                    Files.copy(in, jarFile.toPath());
-                }
-            }
-
-            URL jarUrl = jarFile.toURI().toURL();
-            URLClassLoader classLoader = new URLClassLoader(new URL[]{jarUrl}, DatabaseManager.class.getClassLoader());
-            Class<?> jdbcClass = Class.forName("org.sqlite.JDBC", true, classLoader);
-            sqliteDriver = (Driver) jdbcClass.getDeclaredConstructor().newInstance();
-            driverLoaded = true;
-            RPGMounts.LOGGER.info("Dynamically loaded SQLite JDBC driver from: " + jarFile.getAbsolutePath());
-        } catch (Exception e) {
-            RPGMounts.LOGGER.error("Failed to dynamically load SQLite JDBC driver:", e);
-        }
-    }
-
-    public static Connection getSQLiteConnection(String url) throws SQLException {
-        if (sqliteDriver != null) {
-            return sqliteDriver.connect(url, new Properties());
-        }
-        return DriverManager.getConnection(url);
-    }
-
     public static synchronized void init(Path worldPath) {
         activeWorldPath = worldPath;
         try {
-            ensureDriverLoaded(worldPath);
             File dbDir = new File(worldPath.toFile(), "rpg_mounts");
             if (!dbDir.exists()) {
                 dbDir.mkdirs();
             }
+            File libDir = new File(dbDir, "lib");
+            ddraig.net.azureframelib.db.SQLiteHelper.ensureDriverLoaded(libDir.toPath());
             dbFile = new File(dbDir, "mounts_db.db");
-            String url = "jdbc:sqlite:" + dbFile.getAbsolutePath();
-            connection = getSQLiteConnection(url);
+            connection = ddraig.net.azureframelib.db.SQLiteHelper.openConnection(dbFile);
             createTables();
             precompileStatements();
             loadGlobalCaches();
 
-            if (dbExecutor == null || dbExecutor.isShutdown()) {
-                dbExecutor = Executors.newSingleThreadExecutor(r -> {
-                    Thread thread = new Thread(r, "RPG-Mounts-DB-Thread");
-                    thread.setDaemon(true);
-                    return thread;
-                });
-            }
+            dbExecutor = ddraig.net.azureframelib.db.SQLiteHelper.getAsyncExecutor();
             if (scheduler == null || scheduler.isShutdown()) {
                 scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
                     Thread thread = new Thread(r, "RPG-Mounts-DB-Scheduler");
@@ -133,7 +71,7 @@ public class DatabaseManager {
             }
 
             scheduler.scheduleAtFixedRate(DatabaseManager::flushDirtyUnlockedMounts, 300, 300, TimeUnit.SECONDS);
-            RPGMounts.LOGGER.info("RPG Mounts SQLite Database initialized and cached successfully.");
+            RPGMounts.LOGGER.info("RPG Mounts SQLite Database initialized via AzureFrameLib SQLiteHelper successfully.");
         } catch (Exception e) {
             RPGMounts.LOGGER.error("Failed to initialize RPG Mounts database:", e);
         }
