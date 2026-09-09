@@ -2,8 +2,10 @@
 
 ---
 
-### [Build 137 / Evolution Build 081]
-- **Automated Cloud Build Fix**:
+### [Build 138 / Evolution Build 081]
+- **Forge Compatibility Fix**:
+  - Relaxed the AzureFrameLib version requirement on Forge so it accepts all builds and versions (including preview/build tags like `1.0.0-b002a`), resolving the startup block.
+- **Automated Cloud Build Setup**:
   - Configured automated GitHub builds to download and link the AzureFrameLib shared library directly from GitHub during releases.
   - Added an embedded project library repository so developers can compile the mod locally without needing extra manual setup.
 
