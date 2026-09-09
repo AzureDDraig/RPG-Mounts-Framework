@@ -37,6 +37,20 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Checkout AzureFrameLib
+        uses: actions/checkout@v4
+        with:
+          repository: AzureDDraig/AzureFrameLib
+          path: azureframelib
+
+      - name: Publish AzureFrameLib to mavenLocal
+        run: |
+          cd azureframelib
+          chmod +x gradlew
+          ./gradlew publishToMavenLocal --no-daemon
+          cd ..
+          rm -rf azureframelib
+
       - name: Build Base Mod (Fabric & Forge)
         run: ./gradlew :fabric:build :forge:build --stacktrace
 

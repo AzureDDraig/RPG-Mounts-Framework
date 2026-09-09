@@ -2,6 +2,13 @@
 
 ---
 
+### [Build 137 / Evolution Build 081]
+- **Automated Cloud Build Fix**:
+  - Configured automated GitHub builds to download and link the AzureFrameLib shared library directly from GitHub during releases.
+  - Added an embedded project library repository so developers can compile the mod locally without needing extra manual setup.
+
+---
+
 ### [Build 136]
 - **Shared Core Library Integration (AzureFrameLib)**:
   - Connected the mod to the central AzureFrameLib shared library for smoother performance and shared systems across mods.

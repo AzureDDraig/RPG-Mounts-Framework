@@ -114,6 +114,10 @@ subprojects {
     repositories {
         mavenLocal()
         mavenCentral()
+        maven {
+            name = "ProjectLocalRepo"
+            url = uri("${rootDir}/repo")
+        }
     }
 
     loom {
@@ -166,6 +170,22 @@ allprojects {
             } else {
                 task.finalizedBy(rootProject.tasks.named("incrementBaseBuildNumber"))
             }
+        }
+    }
+}
+
+tasks.register("syncAzureFrameLib") {
+    description = "Copies AzureFrameLib artifacts from mavenLocal into the project's local repo directory."
+    doLast {
+        def m2Dir = file("${System.getProperty('user.home')}/.m2/repository/ddraig/net/azureframelib")
+        if (m2Dir.exists()) {
+            copy {
+                from m2Dir
+                into file("${rootDir}/repo/ddraig/net/azureframelib")
+            }
+            println "Successfully synchronized AzureFrameLib from mavenLocal to repo/"
+        } else {
+            println "Warning: AzureFrameLib not found in ~/.m2/repository"
         }
     }
 }

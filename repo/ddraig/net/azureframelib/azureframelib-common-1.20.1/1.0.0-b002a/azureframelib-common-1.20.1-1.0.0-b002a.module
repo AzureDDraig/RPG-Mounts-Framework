@@ -1,0 +1,96 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "ddraig.net.azureframelib",
+    "module": "azureframelib-common-1.20.1",
+    "version": "1.0.0-b002a",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.14"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "azureframelib-common-1.20.1-1.0.0-b002a.jar",
+          "url": "azureframelib-common-1.20.1-1.0.0-b002a.jar",
+          "size": 67080,
+          "sha512": "c612bbfae5815a0d4b52194ec47b51ba8bc80f85b3aa04927f7fbacd08d6c65aabfd4aa3230271489f976cee6fc28b5d95f4f6ecc4493b339c4857f3f4f60c3a",
+          "sha256": "1df33618c0b05f584af3de2756a783b2fe1bfbfb598565986f33971d6eba9ffe",
+          "sha1": "a1f2429490bbb5ee29c8a9e98a17398792310be3",
+          "md5": "0df0796ef216e84ef022d5300ba361e8"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 17,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "net.fabricmc",
+          "module": "fabric-loader",
+          "version": {
+            "requires": "0.19.3"
+          }
+        },
+        {
+          "group": "dev.architectury",
+          "module": "architectury",
+          "version": {
+            "requires": "9.2.14"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "azureframelib-common-1.20.1-1.0.0-b002a.jar",
+          "url": "azureframelib-common-1.20.1-1.0.0-b002a.jar",
+          "size": 67080,
+          "sha512": "c612bbfae5815a0d4b52194ec47b51ba8bc80f85b3aa04927f7fbacd08d6c65aabfd4aa3230271489f976cee6fc28b5d95f4f6ecc4493b339c4857f3f4f60c3a",
+          "sha256": "1df33618c0b05f584af3de2756a783b2fe1bfbfb598565986f33971d6eba9ffe",
+          "sha1": "a1f2429490bbb5ee29c8a9e98a17398792310be3",
+          "md5": "0df0796ef216e84ef022d5300ba361e8"
+        }
+      ]
+    },
+    {
+      "name": "sourcesElements",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.usage": "java-runtime"
+      },
+      "files": [
+        {
+          "name": "azureframelib-common-1.20.1-1.0.0-b002a-sources.jar",
+          "url": "azureframelib-common-1.20.1-1.0.0-b002a-sources.jar",
+          "size": 32702,
+          "sha512": "e5ee739ffe54481abf2a0fceabc69e8e25e62a4aa4bb85b901f886d862dab47a62b9ee49d0367354cc213c8cff9b035845f4bc3891cc74fe6328b4a4c05d3743",
+          "sha256": "cbd3ceeb5f648d047c0262953a621b9c59559dcfd917227fb6250d14a4d385c9",
+          "sha1": "2e520c2024cd9f3bcf32072c680dcb760dd57ea9",
+          "md5": "8b95974bd3f8b2b1426fa8214f488c3f"
+        }
+      ]
+    }
+  ]
+}

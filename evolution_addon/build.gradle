@@ -26,6 +26,12 @@ allprojects {
     version = rootProject.version
     group = rootProject.group
     repositories {
+        mavenLocal()
+        mavenCentral()
+        maven {
+            name = "ProjectLocalRepo"
+            url = uri("${rootDir}/repo")
+        }
         maven { url "https://maven.fabricmc.net/" }
         maven { url "https://maven.architectury.dev/" }
         maven { url "https://maven.minecraftforge.net/" }
